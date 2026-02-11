@@ -14,7 +14,109 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      messages: {
+        Row: {
+          created_at: string
+          encrypted_blob: string
+          id: string
+          is_deleted: boolean
+          iv: string
+          room_id: string
+          sender_color: string
+          sender_name: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          encrypted_blob: string
+          id?: string
+          is_deleted?: boolean
+          iv: string
+          room_id: string
+          sender_color: string
+          sender_name: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          encrypted_blob?: string
+          id?: string
+          is_deleted?: boolean
+          iv?: string
+          room_id?: string
+          sender_color?: string
+          sender_name?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_id"]
+          },
+        ]
+      }
+      presence: {
+        Row: {
+          avatar_color: string
+          id: string
+          is_active: boolean
+          last_seen: string
+          room_id: string
+          username: string
+        }
+        Insert: {
+          avatar_color: string
+          id?: string
+          is_active?: boolean
+          last_seen?: string
+          room_id: string
+          username: string
+        }
+        Update: {
+          avatar_color?: string
+          id?: string
+          is_active?: boolean
+          last_seen?: string
+          room_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presence_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          room_id: string
+          user_count: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          room_id: string
+          user_count?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          room_id?: string
+          user_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

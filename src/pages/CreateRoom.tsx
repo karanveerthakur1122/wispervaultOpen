@@ -6,6 +6,8 @@ import GlassCard from "@/components/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { generateRoomId, generatePassword } from "@/lib/crypto";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const AVATAR_COLORS = [
   "hsl(210 100% 60%)", "hsl(280 80% 60%)", "hsl(340 80% 60%)",
@@ -19,16 +21,36 @@ const CreateRoom = () => {
   const [roomId] = useState(generateRoomId());
   const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0]);
   const [copied, setCopied] = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  const handleCreate = () => {
-    if (!username.trim()) return;
-    localStorage.setItem(`room_${roomId}`, JSON.stringify({
-      roomId,
-      password,
-      username: username.trim(),
-      avatarColor: selectedColor,
-    }));
-    navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
+  const handleCreate = async () => {
+    if (!username.trim() || creating) return;
+    setCreating(true);
+
+    try {
+      // Create room in DB
+      const { error } = await supabase.from("rooms").insert({
+        room_id: roomId,
+        user_count: 0,
+      });
+
+      if (error) {
+        toast.error("Failed to create room");
+        setCreating(false);
+        return;
+      }
+
+      localStorage.setItem(`room_${roomId}`, JSON.stringify({
+        roomId,
+        password,
+        username: username.trim(),
+        avatarColor: selectedColor,
+      }));
+      navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
+    } catch {
+      toast.error("Something went wrong");
+      setCreating(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -60,13 +82,11 @@ const CreateRoom = () => {
           <p className="text-sm text-muted-foreground">Set up your encrypted chat room</p>
         </div>
 
-        {/* Room ID display */}
         <GlassCard className="p-4 text-center" glow>
           <p className="text-xs text-muted-foreground mb-1">Room ID</p>
           <p className="text-2xl font-mono font-bold tracking-[0.3em] text-foreground">{roomId}</p>
         </GlassCard>
 
-        {/* Username */}
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground flex items-center gap-2">
             <User className="w-4 h-4" /> Username
@@ -80,7 +100,6 @@ const CreateRoom = () => {
           />
         </div>
 
-        {/* Avatar color */}
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground">Avatar Color</label>
           <div className="flex gap-3">
@@ -99,7 +118,6 @@ const CreateRoom = () => {
           </div>
         </div>
 
-        {/* Password */}
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground flex items-center gap-2">
             <Key className="w-4 h-4" /> Room Password
@@ -111,7 +129,6 @@ const CreateRoom = () => {
           />
         </div>
 
-        {/* Copy invite link */}
         <motion.div whileTap={{ scale: 0.97 }}>
           <Button
             onClick={handleCopy}
@@ -123,13 +140,12 @@ const CreateRoom = () => {
           </Button>
         </motion.div>
 
-        {/* Create */}
         <Button
           onClick={handleCreate}
-          disabled={!username.trim() || !password.trim()}
+          disabled={!username.trim() || !password.trim() || creating}
           className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base disabled:opacity-30"
         >
-          Create & Enter Room
+          {creating ? "Creating..." : "Create & Enter Room"}
         </Button>
       </motion.div>
     </div>

@@ -5,6 +5,8 @@ import { ArrowLeft, Key, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import GlassCard from "@/components/GlassCard";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const AVATAR_COLORS = [
   "hsl(210 100% 60%)", "hsl(280 80% 60%)", "hsl(340 80% 60%)",
@@ -18,9 +20,9 @@ const JoinRoom = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0]);
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
-    // Extract key from URL fragment
     const hash = location.hash;
     const match = hash.match(/key=([^&]+)/);
     if (match) {
@@ -28,15 +30,57 @@ const JoinRoom = () => {
     }
   }, [location.hash]);
 
-  const handleJoin = () => {
-    if (!username.trim() || !password.trim() || !roomId) return;
-    localStorage.setItem(`room_${roomId}`, JSON.stringify({
-      roomId,
-      password,
-      username: username.trim(),
-      avatarColor: selectedColor,
-    }));
-    navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
+  const handleJoin = async () => {
+    if (!username.trim() || !password.trim() || !roomId || joining) return;
+    setJoining(true);
+
+    try {
+      // Check room exists and is active
+      const { data: room } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("room_id", roomId)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (!room) {
+        toast.error("Room not found or no longer active");
+        setJoining(false);
+        return;
+      }
+
+      if (room.user_count >= 10) {
+        toast.error("Room is full (max 10 users)");
+        setJoining(false);
+        return;
+      }
+
+      // Check duplicate username
+      const { data: existing } = await supabase
+        .from("presence")
+        .select("id")
+        .eq("room_id", roomId)
+        .eq("username", username.trim())
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (existing) {
+        toast.error("Username already taken in this room");
+        setJoining(false);
+        return;
+      }
+
+      localStorage.setItem(`room_${roomId}`, JSON.stringify({
+        roomId,
+        password,
+        username: username.trim(),
+        avatarColor: selectedColor,
+      }));
+      navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
+    } catch {
+      toast.error("Something went wrong");
+      setJoining(false);
+    }
   };
 
   return (
@@ -113,10 +157,10 @@ const JoinRoom = () => {
 
         <Button
           onClick={handleJoin}
-          disabled={!username.trim() || !password.trim()}
+          disabled={!username.trim() || !password.trim() || joining}
           className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base disabled:opacity-30"
         >
-          Join Room
+          {joining ? "Joining..." : "Join Room"}
         </Button>
       </motion.div>
     </div>
