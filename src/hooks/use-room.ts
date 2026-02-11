@@ -29,6 +29,7 @@ interface RoomConfig {
   password: string;
   username: string;
   avatarColor: string;
+  isCreator?: boolean;
 }
 
 export function useRoom(config: RoomConfig | null) {
@@ -376,6 +377,29 @@ export function useRoom(config: RoomConfig | null) {
     setChatEnded(true);
   }, [config]);
 
+  const leaveRoom = useCallback(async () => {
+    if (!config) return;
+    // Remove own presence
+    if (presenceIdRef.current) {
+      await supabase.from("presence").delete().eq("id", presenceIdRef.current);
+      presenceIdRef.current = null;
+    }
+    // Decrement user count
+    const { data: room } = await supabase
+      .from("rooms")
+      .select("user_count")
+      .eq("room_id", config.roomId)
+      .maybeSingle();
+    if (room) {
+      await supabase
+        .from("rooms")
+        .update({ user_count: Math.max(0, room.user_count - 1) })
+        .eq("room_id", config.roomId);
+    }
+    localStorage.removeItem(`room_${config.roomId}`);
+    setChatEnded(true);
+  }, [config]);
+
   const deleteMessage = useCallback(async (messageId: string) => {
     await supabase.from("messages").delete().eq("id", messageId);
   }, []);
@@ -468,6 +492,7 @@ export function useRoom(config: RoomConfig | null) {
     sendMessage,
     sendTyping,
     endChat,
+    leaveRoom,
     deleteMessage,
     addReaction,
     togglePin,

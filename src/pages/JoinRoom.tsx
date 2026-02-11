@@ -75,6 +75,7 @@ const JoinRoom = () => {
         password,
         username: username.trim(),
         avatarColor: selectedColor,
+        isCreator: false,
       }));
       navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
     } catch {

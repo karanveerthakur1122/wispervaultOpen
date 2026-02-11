@@ -20,7 +20,7 @@ const ChatRoom = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const [messageInput, setMessageInput] = useState("");
   const [roomConfig, setRoomConfig] = useState<{
-    roomId: string; password: string; username: string; avatarColor: string;
+    roomId: string; password: string; username: string; avatarColor: string; isCreator?: boolean;
   } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [activeReactionMsg, setActiveReactionMsg] = useState<string | null>(null);
@@ -42,8 +42,10 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage,
-    sendMessage, sendTyping, endChat, deleteMessage, addReaction, togglePin, markAsRead, recordMediaView,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, addReaction, togglePin, markAsRead, recordMediaView,
   } = useRoom(roomConfig);
+
+  const isCreator = roomConfig?.isCreator ?? false;
 
   // Auto-scroll
   useEffect(() => {
@@ -160,13 +162,17 @@ const ChatRoom = () => {
         </div>
         <motion.div whileTap={{ scale: 0.9 }}>
           <Button
-            onClick={endChat}
+            onClick={isCreator ? endChat : leaveRoom}
             variant="ghost"
             size="sm"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl gap-1 text-xs"
+            className={`rounded-xl gap-1 text-xs ${
+              isCreator
+                ? "text-destructive hover:text-destructive hover:bg-destructive/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            }`}
           >
             <LogOut className="w-4 h-4" />
-            End
+            {isCreator ? "End" : "Leave"}
           </Button>
         </motion.div>
       </header>
