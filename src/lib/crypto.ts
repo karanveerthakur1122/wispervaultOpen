@@ -5,7 +5,12 @@ const KEY_LENGTH = 256;
 const IV_LENGTH = 12; // 96-bit
 
 export function bufferToBase64(buffer: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 export function base64ToBuffer(base64: string): ArrayBuffer {
