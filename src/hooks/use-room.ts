@@ -114,6 +114,13 @@ export function useRoom(config: RoomConfig | null) {
           .eq("room_id", config.roomId);
       }
 
+      // Clean up any stale presence for this username first
+      await supabase
+        .from("presence")
+        .delete()
+        .eq("room_id", config.roomId)
+        .eq("username", config.username);
+
       const { data: presenceData } = await supabase
         .from("presence")
         .insert({
@@ -125,6 +132,14 @@ export function useRoom(config: RoomConfig | null) {
         .single();
 
       if (presenceData) presenceIdRef.current = presenceData.id;
+
+      // Clean up stale presence (last_seen older than 2 minutes)
+      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      await supabase
+        .from("presence")
+        .delete()
+        .eq("room_id", config.roomId)
+        .lt("last_seen", twoMinAgo);
 
       // Load existing messages with reactions and receipts
       const { data: existingMessages } = await supabase
@@ -480,6 +495,21 @@ export function useRoom(config: RoomConfig | null) {
       });
     }
   }, [config]);
+
+  // Heartbeat: update last_seen every 30s so stale users can be detected
+  useEffect(() => {
+    if (!presenceIdRef.current) return;
+    const interval = setInterval(() => {
+      if (presenceIdRef.current) {
+        supabase
+          .from("presence")
+          .update({ last_seen: new Date().toISOString() })
+          .eq("id", presenceIdRef.current)
+          .then();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isConnected]);
 
   // Cleanup presence on unmount
   useEffect(() => {
