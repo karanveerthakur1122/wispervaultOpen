@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { deriveKey, encryptMessage, decryptMessage } from "@/lib/crypto";
+import { deriveKey, encryptMessage, decryptMessage, encryptFile } from "@/lib/crypto";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+
+export interface Reaction {
+  id: string;
+  emoji: string;
+  senderName: string;
+}
 
 export interface DecryptedMessage {
   id: string;
@@ -11,6 +17,11 @@ export interface DecryptedMessage {
   color: string;
   timestamp: number;
   isOwn: boolean;
+  isPinned: boolean;
+  mediaUrl: string | null;
+  mediaType: string | null;
+  reactions: Reaction[];
+  readBy: string[];
 }
 
 interface RoomConfig {
@@ -26,6 +37,7 @@ export function useRoom(config: RoomConfig | null) {
   const [isConnected, setIsConnected] = useState(false);
   const [chatEnded, setChatEnded] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [pinnedMessage, setPinnedMessage] = useState<DecryptedMessage | null>(null);
   const keyRef = useRef<CryptoKey | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
@@ -38,13 +50,44 @@ export function useRoom(config: RoomConfig | null) {
     });
   }, [config?.password, config?.roomId]);
 
+  // Helper to load reactions for messages
+  const loadReactions = useCallback(async (messageIds: string[]): Promise<Record<string, Reaction[]>> => {
+    if (messageIds.length === 0) return {};
+    const { data } = await supabase
+      .from("reactions")
+      .select("*")
+      .in("message_id", messageIds);
+    
+    const map: Record<string, Reaction[]> = {};
+    data?.forEach((r) => {
+      if (!map[r.message_id]) map[r.message_id] = [];
+      map[r.message_id].push({ id: r.id, emoji: r.emoji, senderName: r.sender_name });
+    });
+    return map;
+  }, []);
+
+  // Helper to load read receipts for messages
+  const loadReadReceipts = useCallback(async (messageIds: string[]): Promise<Record<string, string[]>> => {
+    if (messageIds.length === 0) return {};
+    const { data } = await supabase
+      .from("read_receipts")
+      .select("*")
+      .in("message_id", messageIds);
+    
+    const map: Record<string, string[]> = {};
+    data?.forEach((r) => {
+      if (!map[r.message_id]) map[r.message_id] = [];
+      map[r.message_id].push(r.reader_name);
+    });
+    return map;
+  }, []);
+
   // Create or join room + set up realtime
   useEffect(() => {
     if (!config) return;
     let cancelled = false;
 
     const setup = async () => {
-      // Upsert room
       const { data: existingRoom } = await supabase
         .from("rooms")
         .select("*")
@@ -55,16 +98,13 @@ export function useRoom(config: RoomConfig | null) {
       if (!existingRoom) {
         await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1 });
       } else {
-        if (existingRoom.user_count >= 10) {
-          return; // Room full
-        }
+        if (existingRoom.user_count >= 10) return;
         await supabase
           .from("rooms")
           .update({ user_count: existingRoom.user_count + 1 })
           .eq("room_id", config.roomId);
       }
 
-      // Add presence
       const { data: presenceData } = await supabase
         .from("presence")
         .insert({
@@ -75,11 +115,9 @@ export function useRoom(config: RoomConfig | null) {
         .select("id")
         .single();
 
-      if (presenceData) {
-        presenceIdRef.current = presenceData.id;
-      }
+      if (presenceData) presenceIdRef.current = presenceData.id;
 
-      // Load existing messages
+      // Load existing messages with reactions and receipts
       const { data: existingMessages } = await supabase
         .from("messages")
         .select("*")
@@ -88,6 +126,12 @@ export function useRoom(config: RoomConfig | null) {
         .order("created_at", { ascending: true });
 
       if (existingMessages && keyRef.current) {
+        const msgIds = existingMessages.map((m) => m.id);
+        const [reactionsMap, receiptsMap] = await Promise.all([
+          loadReactions(msgIds),
+          loadReadReceipts(msgIds),
+        ]);
+
         const decrypted = await Promise.all(
           existingMessages.map(async (msg) => {
             try {
@@ -99,6 +143,11 @@ export function useRoom(config: RoomConfig | null) {
                 color: msg.sender_color,
                 timestamp: new Date(msg.created_at).getTime(),
                 isOwn: msg.sender_name === config.username,
+                isPinned: msg.is_pinned,
+                mediaUrl: msg.media_url,
+                mediaType: msg.media_type,
+                reactions: reactionsMap[msg.id] || [],
+                readBy: receiptsMap[msg.id] || [],
               };
             } catch {
               return null;
@@ -106,7 +155,9 @@ export function useRoom(config: RoomConfig | null) {
           })
         );
         if (!cancelled) {
-          setMessages(decrypted.filter(Boolean) as DecryptedMessage[]);
+          const msgs = decrypted.filter(Boolean) as DecryptedMessage[];
+          setMessages(msgs);
+          setPinnedMessage(msgs.find((m) => m.isPinned) || null);
         }
       }
 
@@ -133,19 +184,43 @@ export function useRoom(config: RoomConfig | null) {
             if (msg.is_deleted || !keyRef.current) return;
             try {
               const text = await decryptMessage(msg.encrypted_blob, msg.iv, keyRef.current);
+              const newMsg: DecryptedMessage = {
+                id: msg.id,
+                text,
+                username: msg.sender_name,
+                color: msg.sender_color,
+                timestamp: new Date(msg.created_at).getTime(),
+                isOwn: msg.sender_name === config.username,
+                isPinned: msg.is_pinned,
+                mediaUrl: msg.media_url,
+                mediaType: msg.media_type,
+                reactions: [],
+                readBy: [],
+              };
               setMessages((prev) => {
                 if (prev.some((m) => m.id === msg.id)) return prev;
-                return [...prev, {
-                  id: msg.id,
-                  text,
-                  username: msg.sender_name,
-                  color: msg.sender_color,
-                  timestamp: new Date(msg.created_at).getTime(),
-                  isOwn: msg.sender_name === config.username,
-                }];
+                return [...prev, newMsg];
               });
-            } catch {
-              // Decryption failed — wrong key
+              if (msg.is_pinned) setPinnedMessage(newMsg);
+            } catch {}
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "messages", filter: `room_id=eq.${config.roomId}` },
+          async (payload) => {
+            const msg = payload.new as Tables<"messages">;
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== msg.id) return m;
+                return { ...m, isPinned: msg.is_pinned };
+              })
+            );
+            if (msg.is_pinned) {
+              const existing = messages.find((m) => m.id === msg.id);
+              if (existing) setPinnedMessage({ ...existing, isPinned: true });
+            } else {
+              setPinnedMessage((p) => (p?.id === msg.id ? null : p));
             }
           }
         )
@@ -156,7 +231,51 @@ export function useRoom(config: RoomConfig | null) {
             const old = payload.old as { id?: string };
             if (old.id) {
               setMessages((prev) => prev.filter((m) => m.id !== old.id));
+              setPinnedMessage((p) => (p?.id === old.id ? null : p));
             }
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "reactions", filter: `room_id=eq.${config.roomId}` },
+          (payload) => {
+            const r = payload.new as Tables<"reactions">;
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== r.message_id) return m;
+                if (m.reactions.some((rx) => rx.id === r.id)) return m;
+                return { ...m, reactions: [...m.reactions, { id: r.id, emoji: r.emoji, senderName: r.sender_name }] };
+              })
+            );
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "DELETE", schema: "public", table: "reactions", filter: `room_id=eq.${config.roomId}` },
+          (payload) => {
+            const old = payload.old as { id?: string; message_id?: string };
+            if (old.id && old.message_id) {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== old.message_id) return m;
+                  return { ...m, reactions: m.reactions.filter((rx) => rx.id !== old.id) };
+                })
+              );
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "read_receipts", filter: `room_id=eq.${config.roomId}` },
+          (payload) => {
+            const r = payload.new as Tables<"read_receipts">;
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== r.message_id) return m;
+                if (m.readBy.includes(r.reader_name)) return m;
+                return { ...m, readBy: [...m.readBy, r.reader_name] };
+              })
+            );
           }
         )
         .on(
@@ -202,15 +321,35 @@ export function useRoom(config: RoomConfig | null) {
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
 
-  const sendMessage = useCallback(async (text: string) => {
+  const sendMessage = useCallback(async (text: string, file?: File) => {
     if (!config || !keyRef.current) return;
-    const { encrypted, iv } = await encryptMessage(text, keyRef.current);
+    const { encrypted, iv } = await encryptMessage(text || "(media)", keyRef.current);
+
+    let mediaUrl: string | null = null;
+    let mediaType: string | null = null;
+
+    if (file) {
+      const { encryptedBlob, iv: fileIv, mimeType } = await encryptFile(file, keyRef.current);
+      const filePath = `${config.roomId}/${crypto.randomUUID()}`;
+      const { error } = await supabase.storage
+        .from("encrypted-media")
+        .upload(filePath, encryptedBlob);
+      
+      if (!error) {
+        // Store path + iv as JSON in media_url
+        mediaUrl = JSON.stringify({ path: filePath, iv: fileIv });
+        mediaType = mimeType;
+      }
+    }
+
     await supabase.from("messages").insert({
       room_id: config.roomId,
       encrypted_blob: encrypted,
       iv,
       sender_name: config.username,
       sender_color: config.avatarColor,
+      media_url: mediaUrl,
+      media_type: mediaType,
     });
   }, [config]);
 
@@ -225,20 +364,14 @@ export function useRoom(config: RoomConfig | null) {
 
   const endChat = useCallback(async () => {
     if (!config || !channelRef.current) return;
-
-    // Broadcast end to all clients
     channelRef.current.send({
       type: "broadcast",
       event: "chat:end",
       payload: {},
     });
-
-    // Call edge function for server-side permanent deletion
     await supabase.functions.invoke("end-chat", {
       body: { room_id: config.roomId },
     });
-
-    // Clear local
     localStorage.removeItem(`room_${config.roomId}`);
     setChatEnded(true);
   }, [config]);
@@ -246,6 +379,75 @@ export function useRoom(config: RoomConfig | null) {
   const deleteMessage = useCallback(async (messageId: string) => {
     await supabase.from("messages").delete().eq("id", messageId);
   }, []);
+
+  const addReaction = useCallback(async (messageId: string, emoji: string) => {
+    if (!config) return;
+    // Toggle: if already reacted with same emoji, remove
+    const existing = messages.find((m) => m.id === messageId);
+    const existingReaction = existing?.reactions.find(
+      (r) => r.emoji === emoji && r.senderName === config.username
+    );
+    if (existingReaction) {
+      await supabase.from("reactions").delete().eq("id", existingReaction.id);
+    } else {
+      await supabase.from("reactions").insert({
+        message_id: messageId,
+        room_id: config.roomId,
+        emoji,
+        sender_name: config.username,
+      });
+    }
+  }, [config, messages]);
+
+  const togglePin = useCallback(async (messageId: string) => {
+    if (!config) return;
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg) return;
+
+    if (msg.isPinned) {
+      // Unpin
+      await supabase.from("messages").update({ is_pinned: false }).eq("id", messageId);
+    } else {
+      // Unpin existing pinned message first
+      if (pinnedMessage) {
+        await supabase.from("messages").update({ is_pinned: false }).eq("id", pinnedMessage.id);
+      }
+      await supabase.from("messages").update({ is_pinned: true }).eq("id", messageId);
+    }
+  }, [config, messages, pinnedMessage]);
+
+  const markAsRead = useCallback(async (messageId: string) => {
+    if (!config) return;
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg || msg.isOwn || msg.readBy.includes(config.username)) return;
+    
+    await supabase.from("read_receipts").insert({
+      message_id: messageId,
+      room_id: config.roomId,
+      reader_name: config.username,
+    }).select().maybeSingle(); // ignore duplicate errors
+  }, [config, messages]);
+
+  const recordMediaView = useCallback(async (mediaUrl: string) => {
+    if (!config) return;
+    // Check if already viewed
+    const { data: existing } = await supabase
+      .from("media_views")
+      .select("id")
+      .eq("media_url", mediaUrl)
+      .maybeSingle();
+    
+    if (!existing) {
+      await supabase.from("media_views").insert({
+        media_url: mediaUrl,
+        room_id: config.roomId,
+      });
+      // Trigger auto-delete edge function
+      supabase.functions.invoke("delete-media", {
+        body: { media_url: mediaUrl, room_id: config.roomId },
+      });
+    }
+  }, [config]);
 
   // Cleanup presence on unmount
   useEffect(() => {
@@ -262,9 +464,14 @@ export function useRoom(config: RoomConfig | null) {
     isConnected,
     chatEnded,
     typingUsers,
+    pinnedMessage,
     sendMessage,
     sendTyping,
     endChat,
     deleteMessage,
+    addReaction,
+    togglePin,
+    markAsRead,
+    recordMediaView,
   };
 }

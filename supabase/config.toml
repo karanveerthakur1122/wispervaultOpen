@@ -2,3 +2,6 @@ project_id = "cxtinhcxatyvxsqncujw"
 
 [functions.end-chat]
 verify_jwt = false
+
+[functions.delete-media]
+verify_jwt = false
