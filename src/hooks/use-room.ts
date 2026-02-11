@@ -618,9 +618,8 @@ export function useRoom(config: RoomConfig | null) {
     return () => {
       window.removeEventListener('beforeunload', cleanup);
       document.removeEventListener('visibilitychange', handleVisibility);
-      if (presenceIdRef.current) {
-        supabase.from("presence").delete().eq("id", presenceIdRef.current);
-      }
+      // Don't delete presence on unmount — only beforeunload and explicit leave handle that.
+      // This prevents showing offline when navigating within the app.
     };
   }, [config]);
 
