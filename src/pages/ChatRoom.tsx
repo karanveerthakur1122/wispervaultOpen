@@ -25,10 +25,16 @@ const ChatRoom = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [activeReactionMsg, setActiveReactionMsg] = useState<string | null>(null);
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pullY = useMotionValue(0);
+  const pullOpacity = useTransform(pullY, [0, -60], [0, 1]);
+  const pullRotate = useTransform(pullY, [0, -60], [0, -360]);
+  const pullHeight = useTransform(pullY, (v: number) => Math.abs(v));
 
   useEffect(() => {
     if (!roomId) return;
@@ -89,14 +95,7 @@ const ChatRoom = () => {
     });
   }, [messages]);
 
-  // Pull-to-refresh state
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const pullY = useMotionValue(0);
-  const pullOpacity = useTransform(pullY, [0, -60], [0, 1]);
-  const pullRotate = useTransform(pullY, [0, -60], [0, -360]);
-  const pullHeight = useTransform(pullY, (v) => Math.abs(v));
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
+  // Pull-to-refresh callbacks
   const isAtBottom = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return false;
