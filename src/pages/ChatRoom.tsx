@@ -439,7 +439,7 @@ const MessageBubble = ({
               initial={{ opacity: 0, scale: 0.8, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 10 }}
-              className={`absolute ${msg.isOwn ? "right-0" : "left-0"} -top-10 glass rounded-full px-2 py-1 flex gap-1 z-10`}
+              className={`absolute ${msg.isOwn ? "right-0" : "left-0"} -top-10 glass rounded-full px-2 py-1 flex gap-1 z-20`}
               onClick={(e) => e.stopPropagation()}
             >
               {QUICK_EMOJIS.map((emoji) => (
@@ -466,7 +466,7 @@ const MessageBubble = ({
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                onClick={onToggleReactionPicker}
+                onClick={() => { onToggleReactionPicker(); onContextMenu(); }}
                 className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
               >
                 <Smile className="w-3 h-3" /> React
