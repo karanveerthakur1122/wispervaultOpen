@@ -380,6 +380,7 @@ const MessageBubble = ({
 }: MessageBubbleProps) => {
   const [mediaObjectUrl, setMediaObjectUrl] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
+  const [showReadBy, setShowReadBy] = useState(false);
 
   const handleMediaClick = async () => {
     if (!msg.mediaUrl || !msg.mediaType || mediaObjectUrl) return;
@@ -500,7 +501,10 @@ const MessageBubble = ({
         )}
 
         {/* Timestamp + read receipts */}
-        <div className="flex items-center gap-1 mt-0.5 mx-1">
+        <div
+          className="flex items-center gap-1 mt-0.5 mx-1 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); if (msg.readBy.length > 0) setShowReadBy(!showReadBy); }}
+        >
           <p className="text-[10px] text-muted-foreground/40">
             {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
@@ -514,6 +518,22 @@ const MessageBubble = ({
             )
           )}
         </div>
+
+        {/* Read-by names */}
+        <AnimatePresence>
+          {showReadBy && msg.readBy.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mx-1 mt-0.5 overflow-hidden"
+            >
+              <p className="text-[10px] text-muted-foreground/50">
+                Seen by {msg.readBy.join(", ")}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Reaction picker */}
         <AnimatePresence>
