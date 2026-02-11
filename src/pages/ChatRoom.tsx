@@ -3,12 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, RefreshCw
+  Check, CheckCheck, X, Image as ImageIcon, RefreshCw, Reply
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRoom, type DecryptedMessage } from "@/hooks/use-room";
+import { useRoom, type DecryptedMessage, type ReplyInfo } from "@/hooks/use-room";
 import { supabase } from "@/integrations/supabase/client";
 import { decryptFile, base64ToBuffer } from "@/lib/crypto";
 import { deriveKey } from "@/lib/crypto";
@@ -31,6 +31,8 @@ const ChatRoom = () => {
   const [activeReactionMsg, setActiveReactionMsg] = useState<string | null>(null);
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -121,9 +123,20 @@ const ChatRoom = () => {
   const handleSend = async () => {
     if (!messageInput.trim() && !selectedFile) return;
     haptic.medium();
-    await sendMessage(messageInput.trim(), selectedFile || undefined);
+    await sendMessage(messageInput.trim(), selectedFile || undefined, replyTo || undefined);
     setMessageInput("");
     setSelectedFile(null);
+    setReplyTo(null);
+  };
+
+  const handleReply = (msg: DecryptedMessage) => {
+    haptic.light();
+    setReplyTo({
+      messageId: msg.id,
+      username: msg.username,
+      preview: msg.text.slice(0, 50),
+    });
+    inputRef.current?.focus();
   };
 
   const handleInputChange = (value: string) => {
@@ -266,6 +279,8 @@ const ChatRoom = () => {
               onDelete={() => { deleteMessage(msg.id); setShowContextMenu(null); }}
               onMediaView={() => msg.mediaUrl && recordMediaView(msg.mediaUrl)}
               onlineUserCount={onlineUsers.length}
+              onReply={() => handleReply(msg)}
+              onScrollToMessage={scrollToMessage}
             />
           ))}
         </AnimatePresence>
@@ -315,6 +330,20 @@ const ChatRoom = () => {
         </div>
       )}
 
+      {/* Reply preview */}
+      {replyTo && (
+        <div className="glass border-t border-border/50 px-4 py-2 flex items-center gap-2">
+          <Reply className="w-4 h-4 text-primary" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-primary">{replyTo.username}</p>
+            <p className="text-xs text-muted-foreground truncate">{replyTo.preview}</p>
+          </div>
+          <button onClick={() => setReplyTo(null)} className="text-muted-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="glass border-t border-border/50 p-3">
         <div className="flex gap-2 items-center">
@@ -336,10 +365,11 @@ const ChatRoom = () => {
             onChange={handleFileSelect}
           />
           <Input
+            ref={inputRef}
             value={messageInput}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder="Type a message..."
+            placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
             className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
           />
           <motion.div whileTap={{ scale: 0.85 }}>
@@ -371,12 +401,14 @@ interface MessageBubbleProps {
   onDelete: () => void;
   onMediaView: () => void;
   onlineUserCount: number;
+  onReply: () => void;
+  onScrollToMessage: (msgId: string) => void;
 }
 
 const MessageBubble = ({
   msg, roomConfig, activeReactionMsg, showContextMenu,
   onReaction, onToggleReactionPicker, onContextMenu,
-  onPin, onDelete, onMediaView, onlineUserCount,
+  onPin, onDelete, onMediaView, onlineUserCount, onReply, onScrollToMessage,
 }: MessageBubbleProps) => {
   const [mediaObjectUrl, setMediaObjectUrl] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -424,6 +456,16 @@ const MessageBubble = ({
   const isRead = msg.readBy.length > 0;
   const allRead = msg.readBy.length >= onlineUserCount - 1 && onlineUserCount > 1;
 
+  const swipeX = useMotionValue(0);
+  const replyIconOpacity = useTransform(swipeX, msg.isOwn ? [0, -40] : [0, 40], [0, 1]);
+
+  const handleSwipeEnd = (_: any, info: PanInfo) => {
+    const threshold = 50;
+    const triggered = msg.isOwn ? info.offset.x < -threshold : info.offset.x > threshold;
+    if (triggered) onReply();
+    swipeX.set(0);
+  };
+
   return (
     <motion.div
       data-msg-id={msg.id}
@@ -433,11 +475,23 @@ const MessageBubble = ({
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className={`flex ${msg.isOwn ? "justify-end" : "justify-start"} relative`}
       onDoubleClick={(e) => { e.stopPropagation(); onToggleReactionPicker(); }}
-      onTouchEnd={(e) => {
-        // Long press for context menu
-      }}
     >
-      <div className="max-w-[80%] relative">
+      {/* Reply swipe icon */}
+      <motion.div
+        style={{ opacity: replyIconOpacity }}
+        className={`absolute top-1/2 -translate-y-1/2 ${msg.isOwn ? "left-0 -ml-8" : "right-0 -mr-8"}`}
+      >
+        <Reply className="w-4 h-4 text-muted-foreground" />
+      </motion.div>
+
+      <motion.div
+        className="max-w-[80%] relative"
+        style={{ x: swipeX }}
+        drag="x"
+        dragConstraints={{ left: msg.isOwn ? -80 : 0, right: msg.isOwn ? 0 : 80 }}
+        dragElastic={0.3}
+        onDragEnd={handleSwipeEnd}
+      >
         {!msg.isOwn && (
           <p className="text-xs font-medium mb-1 ml-1" style={{ color: msg.color }}>
             {msg.username}
@@ -453,6 +507,21 @@ const MessageBubble = ({
         >
           {msg.isPinned && (
             <Pin className="w-3 h-3 text-primary absolute -top-1 -right-1 rotate-45" />
+          )}
+
+          {/* Reply quote */}
+          {msg.replyTo && (
+            <div
+              className={`mb-2 border-l-2 border-primary/50 pl-2 py-1 rounded-r cursor-pointer ${
+                msg.isOwn ? "bg-primary-foreground/10" : "bg-secondary/30"
+              }`}
+              onClick={(e) => { e.stopPropagation(); onScrollToMessage(msg.replyTo!.messageId); }}
+            >
+              <p className="text-[10px] font-medium text-primary">{msg.replyTo.username}</p>
+              <p className={`text-xs truncate ${msg.isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                {msg.replyTo.preview}
+              </p>
+            </div>
           )}
 
           {/* Media content */}
@@ -569,6 +638,12 @@ const MessageBubble = ({
               onClick={(e) => e.stopPropagation()}
             >
               <button
+                onClick={() => { onReply(); onContextMenu(); }}
+                className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+              >
+                <Reply className="w-3 h-3" /> Reply
+              </button>
+              <button
                 onClick={() => { onToggleReactionPicker(); onContextMenu(); }}
                 className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
               >
@@ -591,7 +666,7 @@ const MessageBubble = ({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };
