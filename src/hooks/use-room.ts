@@ -32,6 +32,17 @@ interface RoomConfig {
   isCreator?: boolean;
 }
 
+/** Deduplicate presence rows by username */
+function deduplicatePresence(rows: Array<{ username: string; avatar_color: string }>) {
+  const seen = new Map<string, { username: string; color: string }>();
+  for (const p of rows) {
+    if (!seen.has(p.username)) {
+      seen.set(p.username, { username: p.username, color: p.avatar_color });
+    }
+  }
+  return Array.from(seen.values());
+}
+
 export function useRoom(config: RoomConfig | null) {
   const [messages, setMessages] = useState<DecryptedMessage[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<Array<{ username: string; color: string }>>([]);
@@ -185,7 +196,7 @@ export function useRoom(config: RoomConfig | null) {
         }
       }
 
-      // Load online users
+      // Load online users (deduplicated by username)
       const { data: presenceList } = await supabase
         .from("presence")
         .select("username, avatar_color")
@@ -193,7 +204,8 @@ export function useRoom(config: RoomConfig | null) {
         .eq("is_active", true);
 
       if (presenceList && !cancelled) {
-        setOnlineUsers(presenceList.map((p) => ({ username: p.username, color: p.avatar_color })));
+        const uniqueUsers = deduplicatePresence(presenceList);
+        setOnlineUsers(uniqueUsers);
       }
 
       // Subscribe to realtime
@@ -312,7 +324,8 @@ export function useRoom(config: RoomConfig | null) {
               .eq("room_id", config.roomId)
               .eq("is_active", true);
             if (data) {
-              setOnlineUsers(data.map((p) => ({ username: p.username, color: p.avatar_color })));
+              const uniqueUsers = deduplicatePresence(data);
+              setOnlineUsers(uniqueUsers);
             }
           }
         )
