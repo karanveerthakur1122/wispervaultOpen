@@ -12,6 +12,11 @@ import { useRoom, type DecryptedMessage } from "@/hooks/use-room";
 import { supabase } from "@/integrations/supabase/client";
 import { decryptFile, base64ToBuffer } from "@/lib/crypto";
 import { deriveKey } from "@/lib/crypto";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
 
@@ -165,21 +170,47 @@ const ChatRoom = () => {
             </p>
           </div>
         </div>
-        <motion.div whileTap={{ scale: 0.9 }}>
-          <Button
-            onClick={isCreator ? endChat : leaveRoom}
-            variant="ghost"
-            size="sm"
-            className={`rounded-xl gap-1 text-xs ${
-              isCreator
-                ? "text-destructive hover:text-destructive hover:bg-destructive/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
-          >
-            <LogOut className="w-4 h-4" />
-            {isCreator ? "End" : "Leave"}
-          </Button>
-        </motion.div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <motion.div whileTap={{ scale: 0.9 }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`rounded-xl gap-1 text-xs ${
+                  isCreator
+                    ? "text-destructive hover:text-destructive hover:bg-destructive/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                }`}
+              >
+                <LogOut className="w-4 h-4" />
+                {isCreator ? "End" : "Leave"}
+              </Button>
+            </motion.div>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="glass border-border/50 max-w-[320px] rounded-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-foreground">
+                {isCreator ? "End Chat?" : "Leave Room?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground">
+                {isCreator
+                  ? "This will permanently destroy all messages and data for everyone in this room. This cannot be undone."
+                  : "You will leave this room. You can rejoin later with the invite link."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl border-border/50">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={isCreator ? endChat : leaveRoom}
+                className={`rounded-xl ${
+                  isCreator ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
+                }`}
+              >
+                {isCreator ? "End Chat" : "Leave"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </header>
 
       {/* Pinned message banner */}
