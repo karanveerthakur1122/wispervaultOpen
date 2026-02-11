@@ -3,10 +3,39 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { useIsMobile } from "@/hooks/use-mobile";
+import DesktopBlocker from "@/components/DesktopBlocker";
+import Home from "./pages/Home";
+import CreateRoom from "./pages/CreateRoom";
+import JoinRoom from "./pages/JoinRoom";
+import ChatRoom from "./pages/ChatRoom";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const AppContent = () => {
+  const isMobile = useIsMobile();
+
+  // Show desktop blocker on non-mobile
+  if (isMobile === false) {
+    return <DesktopBlocker />;
+  }
+
+  // Wait for detection
+  if (isMobile === undefined) {
+    return null;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/create" element={<CreateRoom />} />
+      <Route path="/join/:roomId" element={<JoinRoom />} />
+      <Route path="/room/:roomId" element={<ChatRoom />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -14,11 +43,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppContent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
