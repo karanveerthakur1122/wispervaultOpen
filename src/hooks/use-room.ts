@@ -10,6 +10,12 @@ export interface Reaction {
   senderName: string;
 }
 
+export interface ReplyInfo {
+  messageId: string;
+  username: string;
+  preview: string;
+}
+
 export interface DecryptedMessage {
   id: string;
   text: string;
@@ -22,6 +28,7 @@ export interface DecryptedMessage {
   mediaType: string | null;
   reactions: Reaction[];
   readBy: string[];
+  replyTo: ReplyInfo | null;
 }
 
 interface RoomConfig {
@@ -41,6 +48,23 @@ function deduplicatePresence(rows: Array<{ username: string; avatar_color: strin
     }
   }
   return Array.from(seen.values());
+}
+
+const REPLY_PREFIX = "[reply:";
+
+/** Parse reply metadata from decrypted text. Format: [reply:msgId:username:preview]actualText */
+function parseReply(raw: string): { text: string; replyTo: ReplyInfo | null } {
+  if (!raw.startsWith(REPLY_PREFIX)) return { text: raw, replyTo: null };
+  const endBracket = raw.indexOf("]");
+  if (endBracket === -1) return { text: raw, replyTo: null };
+  const meta = raw.slice(REPLY_PREFIX.length, endBracket);
+  const parts = meta.split(":");
+  if (parts.length < 3) return { text: raw, replyTo: null };
+  const [messageId, username, ...previewParts] = parts;
+  return {
+    text: raw.slice(endBracket + 1),
+    replyTo: { messageId, username, preview: previewParts.join(":") },
+  };
 }
 
 export function useRoom(config: RoomConfig | null) {
@@ -171,7 +195,8 @@ export function useRoom(config: RoomConfig | null) {
         const decrypted = await Promise.all(
           existingMessages.map(async (msg) => {
             try {
-              const text = await decryptMessage(msg.encrypted_blob, msg.iv, keyRef.current!);
+              const rawText = await decryptMessage(msg.encrypted_blob, msg.iv, keyRef.current!);
+              const { text, replyTo } = parseReply(rawText);
               return {
                 id: msg.id,
                 text,
@@ -184,6 +209,7 @@ export function useRoom(config: RoomConfig | null) {
                 mediaType: msg.media_type,
                 reactions: reactionsMap[msg.id] || [],
                 readBy: receiptsMap[msg.id] || [],
+                replyTo,
               };
             } catch {
               return null;
@@ -220,7 +246,8 @@ export function useRoom(config: RoomConfig | null) {
             const msg = payload.new as Tables<"messages">;
             if (msg.is_deleted || !keyRef.current) return;
             try {
-              const text = await decryptMessage(msg.encrypted_blob, msg.iv, keyRef.current);
+              const rawText = await decryptMessage(msg.encrypted_blob, msg.iv, keyRef.current);
+              const { text, replyTo } = parseReply(rawText);
               const newMsg: DecryptedMessage = {
                 id: msg.id,
                 text,
@@ -233,6 +260,7 @@ export function useRoom(config: RoomConfig | null) {
                 mediaType: msg.media_type,
                 reactions: [],
                 readBy: [],
+                replyTo,
               };
               setMessages((prev) => {
                 if (prev.some((m) => m.id === msg.id)) return prev;
@@ -367,9 +395,13 @@ export function useRoom(config: RoomConfig | null) {
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
 
-  const sendMessage = useCallback(async (text: string, file?: File) => {
+  const sendMessage = useCallback(async (text: string, file?: File, replyTo?: ReplyInfo) => {
     if (!config || !keyRef.current) return;
-    const { encrypted, iv } = await encryptMessage(text || "(media)", keyRef.current);
+    // Prepend reply metadata if replying
+    const fullText = replyTo
+      ? `[reply:${replyTo.messageId}:${replyTo.username}:${replyTo.preview}]${text || "(media)"}`
+      : (text || "(media)");
+    const { encrypted, iv } = await encryptMessage(fullText, keyRef.current);
 
     let mediaUrl: string | null = null;
     let mediaType: string | null = null;
