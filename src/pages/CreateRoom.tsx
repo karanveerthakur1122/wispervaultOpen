@@ -45,6 +45,7 @@ const CreateRoom = () => {
         password,
         username: username.trim(),
         avatarColor: selectedColor,
+        isCreator: true,
       }));
       navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
     } catch {
