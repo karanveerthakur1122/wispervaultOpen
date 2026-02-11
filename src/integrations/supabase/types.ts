@@ -14,13 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      media_views: {
+        Row: {
+          first_viewed_at: string
+          id: string
+          media_url: string
+          room_id: string
+        }
+        Insert: {
+          first_viewed_at?: string
+          id?: string
+          media_url: string
+          room_id: string
+        }
+        Update: {
+          first_viewed_at?: string
+          id?: string
+          media_url?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_views_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           created_at: string
           encrypted_blob: string
           id: string
           is_deleted: boolean
+          is_pinned: boolean
           iv: string
+          media_type: string | null
+          media_url: string | null
           room_id: string
           sender_color: string
           sender_name: string
@@ -31,7 +63,10 @@ export type Database = {
           encrypted_blob: string
           id?: string
           is_deleted?: boolean
+          is_pinned?: boolean
           iv: string
+          media_type?: string | null
+          media_url?: string | null
           room_id: string
           sender_color: string
           sender_name: string
@@ -42,7 +77,10 @@ export type Database = {
           encrypted_blob?: string
           id?: string
           is_deleted?: boolean
+          is_pinned?: boolean
           iv?: string
+          media_type?: string | null
+          media_url?: string | null
           room_id?: string
           sender_color?: string
           sender_name?: string
@@ -86,6 +124,87 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "presence_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_id"]
+          },
+        ]
+      }
+      reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          room_id: string
+          sender_name: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          room_id: string
+          sender_name: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          room_id?: string
+          sender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reactions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_id"]
+          },
+        ]
+      }
+      read_receipts: {
+        Row: {
+          id: string
+          message_id: string
+          read_at: string
+          reader_name: string
+          room_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          read_at?: string
+          reader_name: string
+          room_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          read_at?: string
+          reader_name?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "read_receipts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "read_receipts_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"

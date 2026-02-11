@@ -4,11 +4,11 @@ const PBKDF2_ITERATIONS = 100_000;
 const KEY_LENGTH = 256;
 const IV_LENGTH = 12; // 96-bit
 
-function bufferToBase64(buffer: ArrayBuffer): string {
+export function bufferToBase64(buffer: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
-function base64ToBuffer(base64: string): ArrayBuffer {
+export function base64ToBuffer(base64: string): ArrayBuffer {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -73,6 +73,42 @@ export async function decryptMessage(
   );
 
   return dec.decode(plaintext);
+}
+
+export async function encryptFile(
+  file: File,
+  key: CryptoKey
+): Promise<{ encryptedBlob: Blob; iv: string; originalName: string; mimeType: string }> {
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const arrayBuffer = await file.arrayBuffer();
+
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    arrayBuffer
+  );
+
+  return {
+    encryptedBlob: new Blob([ciphertext]),
+    iv: bufferToBase64(iv.buffer),
+    originalName: file.name,
+    mimeType: file.type,
+  };
+}
+
+export async function decryptFile(
+  encryptedData: ArrayBuffer,
+  iv: string,
+  key: CryptoKey,
+  mimeType: string
+): Promise<Blob> {
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: base64ToBuffer(iv) },
+    key,
+    encryptedData
+  );
+
+  return new Blob([plaintext], { type: mimeType });
 }
 
 export function generateRoomId(): string {
