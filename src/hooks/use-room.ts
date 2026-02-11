@@ -233,10 +233,10 @@ export function useRoom(config: RoomConfig | null) {
       payload: {},
     });
 
-    // Delete everything
-    await supabase.from("messages").delete().eq("room_id", config.roomId);
-    await supabase.from("presence").delete().eq("room_id", config.roomId);
-    await supabase.from("rooms").delete().eq("room_id", config.roomId);
+    // Call edge function for server-side permanent deletion
+    await supabase.functions.invoke("end-chat", {
+      body: { room_id: config.roomId },
+    });
 
     // Clear local
     localStorage.removeItem(`room_${config.roomId}`);
