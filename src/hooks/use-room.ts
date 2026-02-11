@@ -144,13 +144,14 @@ export function useRoom(config: RoomConfig | null) {
 
       if (presenceData) presenceIdRef.current = presenceData.id;
 
-      // Clean up stale presence (last_seen older than 2 minutes)
-      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      // Clean up stale presence (last_seen older than 60 seconds — heartbeat is every 30s)
+      const staleThreshold = new Date(Date.now() - 60 * 1000).toISOString();
       await supabase
         .from("presence")
         .delete()
         .eq("room_id", config.roomId)
-        .lt("last_seen", twoMinAgo);
+        .lt("last_seen", staleThreshold)
+        .neq("id", presenceIdRef.current ?? "");
 
       // Load existing messages with reactions and receipts
       const { data: existingMessages } = await supabase
@@ -318,6 +319,14 @@ export function useRoom(config: RoomConfig | null) {
           "postgres_changes",
           { event: "*", schema: "public", table: "presence", filter: `room_id=eq.${config.roomId}` },
           async () => {
+            // Prune stale presence before fetching
+            const staleThreshold = new Date(Date.now() - 60 * 1000).toISOString();
+            await supabase
+              .from("presence")
+              .delete()
+              .eq("room_id", config.roomId)
+              .lt("last_seen", staleThreshold);
+
             const { data } = await supabase
               .from("presence")
               .select("username, avatar_color")
@@ -509,9 +518,9 @@ export function useRoom(config: RoomConfig | null) {
     }
   }, [config]);
 
-  // Heartbeat: update last_seen every 30s so stale users can be detected
+  // Heartbeat: update last_seen every 20s so stale users can be detected
   useEffect(() => {
-    if (!presenceIdRef.current) return;
+    if (!presenceIdRef.current || !config) return;
     const interval = setInterval(() => {
       if (presenceIdRef.current) {
         supabase
@@ -520,18 +529,68 @@ export function useRoom(config: RoomConfig | null) {
           .eq("id", presenceIdRef.current)
           .then();
       }
-    }, 30000);
+    }, 20000);
     return () => clearInterval(interval);
-  }, [isConnected]);
+  }, [isConnected, config]);
 
-  // Cleanup presence on unmount
+  // Cleanup presence on unmount + beforeunload + visibilitychange
   useEffect(() => {
+    if (!config) return;
+
+    const cleanup = () => {
+      if (presenceIdRef.current) {
+        // Use sendBeacon for reliable cleanup on tab close
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/presence?id=eq.${presenceIdRef.current}`;
+        const headers = {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        };
+        // Try fetch with keepalive first (more reliable than sendBeacon for DELETE)
+        try {
+          fetch(url, { method: 'DELETE', headers, keepalive: true });
+        } catch {
+          // Fallback: mark inactive via PATCH with sendBeacon
+          const patchUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/presence?id=eq.${presenceIdRef.current}`;
+          navigator.sendBeacon?.(patchUrl);
+        }
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        // Mark as stale by setting last_seen far back so others prune it
+        if (presenceIdRef.current) {
+          supabase
+            .from("presence")
+            .update({ last_seen: new Date(Date.now() - 120000).toISOString() })
+            .eq("id", presenceIdRef.current)
+            .then();
+        }
+      } else if (document.visibilityState === 'visible') {
+        // Refresh presence when coming back
+        if (presenceIdRef.current) {
+          supabase
+            .from("presence")
+            .update({ last_seen: new Date().toISOString() })
+            .eq("id", presenceIdRef.current)
+            .then();
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', cleanup);
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
+      window.removeEventListener('beforeunload', cleanup);
+      document.removeEventListener('visibilitychange', handleVisibility);
       if (presenceIdRef.current) {
         supabase.from("presence").delete().eq("id", presenceIdRef.current);
       }
     };
-  }, []);
+  }, [config]);
 
   return {
     messages,
