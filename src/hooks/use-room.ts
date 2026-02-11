@@ -99,10 +99,18 @@ export function useRoom(config: RoomConfig | null) {
       if (!existingRoom) {
         await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1 });
       } else {
-        if (existingRoom.user_count >= 10) return;
+        // Use actual active presence count instead of stale user_count
+        const { count } = await supabase
+          .from("presence")
+          .select("id", { count: "exact", head: true })
+          .eq("room_id", config.roomId)
+          .eq("is_active", true);
+
+        const activeCount = count ?? 0;
+        // Sync the room's user_count with reality
         await supabase
           .from("rooms")
-          .update({ user_count: existingRoom.user_count + 1 })
+          .update({ user_count: activeCount + 1 })
           .eq("room_id", config.roomId);
       }
 
