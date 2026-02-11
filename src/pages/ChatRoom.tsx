@@ -92,21 +92,27 @@ const ChatRoom = () => {
   // Pull-to-refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pullY = useMotionValue(0);
-  const pullOpacity = useTransform(pullY, [0, 60], [0, 1]);
-  const pullRotate = useTransform(pullY, [0, 60], [0, 360]);
+  const pullOpacity = useTransform(pullY, [0, -60], [0, 1]);
+  const pullRotate = useTransform(pullY, [0, -60], [0, -360]);
+  const pullHeight = useTransform(pullY, (v) => Math.abs(v));
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  const isAtBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return false;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 10;
+  }, []);
+
   const handlePullEnd = useCallback(async (_: any, info: PanInfo) => {
-    if (info.offset.y > 80 && scrollContainerRef.current?.scrollTop === 0) {
+    if (info.offset.y < -80 && isAtBottom()) {
       setIsRefreshing(true);
-      haptic.medium();
-      // Simulate refresh — messages are realtime, so just a visual confirmation
+      haptic.light();
       await new Promise((r) => setTimeout(r, 800));
       setIsRefreshing(false);
-      haptic.success();
+      haptic.light();
     }
     pullY.set(0);
-  }, [pullY]);
+  }, [pullY, isAtBottom]);
 
   const handleSend = async () => {
     if (!messageInput.trim() && !selectedFile) return;
@@ -194,23 +200,13 @@ const ChatRoom = () => {
       )}
 
       {/* Messages */}
-      {/* Pull-to-refresh indicator */}
-      <motion.div
-        style={{ opacity: pullOpacity, height: pullY }}
-        className="flex items-center justify-center overflow-hidden"
-      >
-        <motion.div style={{ rotate: pullRotate }}>
-          <RefreshCw className={`w-5 h-5 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
-        </motion.div>
-      </motion.div>
-
       <motion.div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-3"
         onClick={() => { setActiveReactionMsg(null); setShowContextMenu(null); }}
         onPan={(_, info) => {
-          if (scrollContainerRef.current?.scrollTop === 0 && info.delta.y > 0) {
-            pullY.set(Math.min(info.offset.y, 100));
+          if (isAtBottom() && info.delta.y < 0) {
+            pullY.set(Math.max(info.offset.y, -100));
           }
         }}
         onPanEnd={handlePullEnd}
@@ -266,6 +262,16 @@ const ChatRoom = () => {
         )}
 
         <div ref={messagesEndRef} />
+
+        {/* Pull-up-to-refresh indicator */}
+        <motion.div
+          style={{ opacity: pullOpacity, height: pullHeight }}
+          className="flex items-center justify-center overflow-hidden"
+        >
+          <motion.div style={{ rotate: pullRotate }}>
+            <RefreshCw className={`w-5 h-5 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
+          </motion.div>
+        </motion.div>
       </motion.div>
 
       {/* File preview */}
