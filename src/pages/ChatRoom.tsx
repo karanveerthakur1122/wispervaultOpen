@@ -25,6 +25,7 @@ const ChatRoom = () => {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const [messageInput, setMessageInput] = useState("");
+  const [screenBlocked, setScreenBlocked] = useState(false);
   const [roomConfig, setRoomConfig] = useState<{
     roomId: string; password: string; username: string; avatarColor: string; isCreator?: boolean;
   } | null>(null);
@@ -133,15 +134,32 @@ const ChatRoom = () => {
     });
   }, [messages.length]);
 
-  // Screenshot detection
+  // Screenshot prevention & detection
   useEffect(() => {
     if (!roomConfig) return;
     let lastScreenshotTime = 0;
     const throttle = () => {
       const now = Date.now();
-      if (now - lastScreenshotTime < 2000) return false;
+      if (now - lastScreenshotTime < 3000) return false;
       lastScreenshotTime = now;
       return true;
+    };
+
+    const triggerBlackScreen = () => {
+      setScreenBlocked(true);
+      if (throttle()) reportScreenshot();
+      // Auto-clear after 3 seconds once visible again
+      const clear = () => {
+        if (document.visibilityState === "visible") {
+          setTimeout(() => setScreenBlocked(false), 1500);
+          document.removeEventListener("visibilitychange", clear);
+        }
+      };
+      if (document.visibilityState === "visible") {
+        setTimeout(() => setScreenBlocked(false), 1500);
+      } else {
+        document.addEventListener("visibilitychange", clear);
+      }
     };
 
     // Desktop: detect PrintScreen / Cmd+Shift+S / Cmd+Shift+3/4/5
@@ -149,31 +167,42 @@ const ChatRoom = () => {
       const isPrintScreen = e.key === "PrintScreen";
       const isMacScreenshot = e.metaKey && e.shiftKey && ["3", "4", "5", "s", "S"].includes(e.key);
       const isWinSnip = e.ctrlKey && e.shiftKey && (e.key === "s" || e.key === "S");
-      if ((isPrintScreen || isMacScreenshot || isWinSnip) && throttle()) {
-        reportScreenshot();
+      if (isPrintScreen || isMacScreenshot || isWinSnip) {
+        e.preventDefault();
+        triggerBlackScreen();
       }
     };
 
-    // Mobile: use visibilitychange heuristic (brief hide+show within ~1s suggests screenshot)
-    let hideTime = 0;
+    // Mobile + tablet: black screen on ANY blur / visibility hidden
+    // This catches screenshot attempts since they cause focus loss on most devices
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
-        hideTime = Date.now();
-      } else if (document.visibilityState === "visible" && hideTime > 0) {
-        const elapsed = Date.now() - hideTime;
-        // Screenshot on most phones causes a very brief visibility toggle (< 1s)
-        if (elapsed > 100 && elapsed < 1500 && throttle()) {
-          reportScreenshot();
-        }
-        hideTime = 0;
+        setScreenBlocked(true);
+        if (throttle()) reportScreenshot();
+      } else {
+        // Delay unblock so screenshot captures black
+        setTimeout(() => setScreenBlocked(false), 800);
       }
+    };
+
+    const handleBlur = () => {
+      // Black screen on blur (protection) but don't broadcast — avoids false positives from normal tab switches
+      setScreenBlocked(true);
+    };
+
+    const handleFocus = () => {
+      setTimeout(() => setScreenBlocked(false), 800);
     };
 
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [roomConfig, reportScreenshot]);
 
@@ -263,7 +292,17 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="h-[100dvh] flex flex-col">
+    <div className="h-[100dvh] flex flex-col relative">
+      {/* Screenshot black screen overlay */}
+      {screenBlocked && (
+        <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
+          <div className="text-center space-y-2">
+            <Shield className="w-12 h-12 mx-auto text-destructive animate-pulse" />
+            <p className="text-destructive font-bold text-lg">Screenshot Blocked</p>
+            <p className="text-muted-foreground text-xs">Screen recording & screenshots are not allowed</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="glass border-b border-border/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
