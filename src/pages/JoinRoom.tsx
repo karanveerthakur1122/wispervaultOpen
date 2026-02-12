@@ -36,10 +36,10 @@ const JoinRoom = () => {
     setJoining(true);
 
     try {
-      // Check room exists and is active
+      // Check room exists and is active (don't select password_hash)
       const { data: room } = await supabase
         .from("rooms")
-        .select("*")
+        .select("room_id, user_count, active")
         .eq("room_id", roomId)
         .eq("active", true)
         .maybeSingle();
@@ -56,14 +56,17 @@ const JoinRoom = () => {
         return;
       }
 
-      // Verify password
-      if (room.password_hash) {
-        const inputHash = await hashPassword(password);
-        if (inputHash !== room.password_hash) {
-          toast.error("Incorrect password");
-          setJoining(false);
-          return;
-        }
+      // Verify password server-side via edge function
+      const inputHash = await hashPassword(password);
+      const { data: verifyResult, error: verifyError } = await supabase.functions.invoke(
+        "verify-room-password",
+        { body: { room_id: roomId, password_hash: inputHash } }
+      );
+
+      if (verifyError || !verifyResult?.valid) {
+        toast.error(verifyResult?.error || "Incorrect password");
+        setJoining(false);
+        return;
       }
 
       // Check duplicate username
