@@ -91,6 +91,13 @@ const JoinRoom = () => {
         avatarColor: selectedColor,
         isCreator: false,
       }));
+
+      // Save to recent rooms
+      const recentRooms = JSON.parse(localStorage.getItem("recent_rooms") || "[]");
+      const filtered = recentRooms.filter((r: { roomId: string }) => r.roomId !== roomId);
+      filtered.unshift({ roomId, username: username.trim(), avatarColor: selectedColor, password, joinedAt: Date.now() });
+      localStorage.setItem("recent_rooms", JSON.stringify(filtered.slice(0, 10)));
+
       navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
     } catch {
       toast.error("Something went wrong");

@@ -67,6 +67,14 @@ function parseReply(raw: string): { text: string; replyTo: ReplyInfo | null } {
   };
 }
 
+export interface SystemEvent {
+  id: string;
+  type: "join" | "leave";
+  username: string;
+  color: string;
+  timestamp: number;
+}
+
 export function useRoom(config: RoomConfig | null) {
   const [messages, setMessages] = useState<DecryptedMessage[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<Array<{ username: string; color: string }>>([]);
@@ -74,6 +82,7 @@ export function useRoom(config: RoomConfig | null) {
   const [chatEnded, setChatEnded] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<DecryptedMessage | null>(null);
+  const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
   const keyRef = useRef<CryptoKey | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
@@ -392,8 +401,25 @@ export function useRoom(config: RoomConfig | null) {
             }, 3000);
           }
         })
-        .subscribe((status) => {
+        .on("broadcast", { event: "user:join" }, (payload) => {
+          const { username: joinedUser, color } = payload.payload as { username: string; color: string };
+          if (joinedUser && joinedUser !== config.username) {
+            setSystemEvents((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "join", username: joinedUser, color, timestamp: Date.now() },
+            ]);
+          }
+        })
+        .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
+          // Broadcast join event once subscribed
+          if (status === "SUBSCRIBED" && channel) {
+            channel.send({
+              type: "broadcast",
+              event: "user:join",
+              payload: { username: config.username, color: config.avatarColor },
+            });
+          }
         });
 
       channelRef.current = channel;
@@ -661,6 +687,7 @@ export function useRoom(config: RoomConfig | null) {
     chatEnded,
     typingUsers,
     pinnedMessage,
+    systemEvents,
     sendMessage,
     sendTyping,
     endChat,
