@@ -12,6 +12,7 @@ interface RecentRoom {
   username: string;
   avatarColor: string;
   password: string;
+  isCreator: boolean;
   joinedAt: number;
 }
 
@@ -35,6 +36,25 @@ const Home = () => {
   const [showJoin, setShowJoin] = useState(false);
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
   const [checkingRoom, setCheckingRoom] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<{ roomId: string; password: string } | null>(null);
+
+  // Check for active room session (user pressed back)
+  useEffect(() => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("room_")) {
+        try {
+          const session = JSON.parse(localStorage.getItem(key) || "");
+          if (session?.roomId && session?.password) {
+            setActiveSession({ roomId: session.roomId, password: session.password });
+            // Auto-redirect back to the room
+            navigate(`/room/${session.roomId}#key=${encodeURIComponent(session.password)}`, { replace: true });
+            return;
+          }
+        } catch {}
+      }
+    }
+  }, [navigate]);
 
   // Load and validate recent rooms on mount
   useEffect(() => {
@@ -87,7 +107,7 @@ const Home = () => {
         password: room.password,
         username: room.username,
         avatarColor: room.avatarColor,
-        isCreator: false,
+        isCreator: room.isCreator ?? false,
       }));
       navigate(`/room/${room.roomId}#key=${encodeURIComponent(room.password)}`);
     } finally {
