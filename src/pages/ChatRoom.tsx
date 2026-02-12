@@ -29,9 +29,12 @@ const ChatRoom = () => {
     roomId: string; password: string; username: string; avatarColor: string; isCreator?: boolean;
   } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [activeReactionMsg, setActiveReactionMsg] = useState<string | null>(null);
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
+  const [sendingText, setSendingText] = useState<string | null>(null);
+  const [sendingFilePreview, setSendingFilePreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -115,21 +118,33 @@ const ChatRoom = () => {
     setIsSending(true);
     haptic.medium();
 
+    // Show sending bubble immediately
+    const textToSend = messageInput.trim();
+    setSendingText(textToSend || (selectedFile ? "(media)" : null));
+    if (filePreviewUrl && selectedFile?.type.startsWith("image/")) {
+      setSendingFilePreview(filePreviewUrl);
+    }
+
+    // Clear input immediately for snappy UX
+    setMessageInput("");
+    const currentFile = selectedFile;
+    const currentReply = replyTo;
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    setReplyTo(null);
+
     try {
-      // Compress media before sending
-      let fileToSend = selectedFile || undefined;
+      let fileToSend: File | undefined = currentFile || undefined;
       if (fileToSend) {
         fileToSend = await compressMedia(fileToSend);
       }
-
-      await sendMessage(messageInput.trim(), fileToSend, replyTo || undefined);
-      setMessageInput("");
-      setSelectedFile(null);
-      setReplyTo(null);
+      await sendMessage(textToSend, fileToSend, currentReply || undefined);
     } finally {
       setIsSending(false);
+      setSendingText(null);
+      setSendingFilePreview(null);
     }
-  }, [messageInput, selectedFile, replyTo, sendMessage, isSending]);
+  }, [messageInput, selectedFile, replyTo, sendMessage, isSending, filePreviewUrl]);
 
   const handleReply = useCallback((msg: DecryptedMessage) => {
     haptic.light();
@@ -151,7 +166,16 @@ const ChatRoom = () => {
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setSelectedFile(file);
+    if (file) {
+      setSelectedFile(file);
+      // Generate preview for images/videos
+      if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+        const url = URL.createObjectURL(file);
+        setFilePreviewUrl(url);
+      } else {
+        setFilePreviewUrl(null);
+      }
+    }
   }, []);
 
   const scrollToMessage = useCallback((msgId: string) => {
@@ -283,6 +307,26 @@ const ChatRoom = () => {
           />
         ))}
 
+        {/* Sending bubble — optimistic preview */}
+        {isSending && sendingText !== null && (
+          <div className="flex justify-end animate-fade-in">
+            <div className="max-w-[80%]">
+              <div className="rounded-2xl rounded-br-md px-4 py-2.5 text-sm bg-primary/60 text-primary-foreground relative">
+                {sendingFilePreview && (
+                  <div className="mb-2 rounded-lg overflow-hidden opacity-70">
+                    <img src={sendingFilePreview} alt="Sending..." className="max-w-full max-h-40 object-cover" />
+                  </div>
+                )}
+                {sendingText !== "(media)" && <span className="opacity-80">{sendingText}</span>}
+                <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5">
+                  <span className="w-3 h-3 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground/30 mt-0.5 mx-1">Sending...</p>
+            </div>
+          </div>
+        )}
+
         {/* Typing indicator */}
         {typingUsers.length > 0 && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground animate-fade-in">
@@ -302,14 +346,43 @@ const ChatRoom = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* File preview */}
+      {/* File preview with thumbnail */}
       {selectedFile && (
-        <div className="glass border-t border-border/50 px-4 py-2 flex items-center gap-2">
-          <ImageIcon className="w-4 h-4 text-primary" />
-          <span className="text-xs text-muted-foreground truncate flex-1">{selectedFile.name}</span>
-          <button onClick={() => setSelectedFile(null)} className="text-muted-foreground">
-            <X className="w-4 h-4" />
-          </button>
+        <div className="glass border-t border-border/50 px-4 py-2">
+          <div className="flex items-center gap-3">
+            {/* Thumbnail */}
+            {filePreviewUrl && selectedFile.type.startsWith("image/") ? (
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-secondary/30">
+                <img src={filePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+            ) : filePreviewUrl && selectedFile.type.startsWith("video/") ? (
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-secondary/30 relative">
+                <video src={filePreviewUrl} className="w-full h-full object-cover" muted />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <span className="text-white text-[10px]">▶</span>
+                </div>
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-secondary/30 flex items-center justify-center flex-shrink-0">
+                <ImageIcon className="w-4 h-4 text-primary" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-foreground font-medium truncate">{selectedFile.name}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {(selectedFile.size / 1024).toFixed(0)}KB · {selectedFile.type.split("/")[0]}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedFile(null);
+                if (filePreviewUrl) { URL.revokeObjectURL(filePreviewUrl); setFilePreviewUrl(null); }
+              }}
+              className="text-muted-foreground p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -512,7 +585,7 @@ const MessageBubble = memo(({
   return (
     <div
       data-msg-id={msg.id}
-      className={`flex ${msg.isOwn ? "justify-end" : "justify-start"} relative`}
+      className={`flex ${msg.isOwn ? "justify-end" : "justify-start"} relative animate-fade-in`}
       onDoubleClick={(e) => { e.stopPropagation(); onSetActiveReaction(isShowingReactions ? null : msg.id); }}
     >
       {/* Reply swipe icon */}
