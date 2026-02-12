@@ -61,20 +61,40 @@ const ChatRoom = () => {
 
   const isCreator = roomConfig?.isCreator ?? false;
 
-  // Auto-scroll — only when near bottom
+  // Auto-scroll on new messages — always scroll to bottom
   const prevMsgCountRef = useRef(0);
   useEffect(() => {
     if (messages.length > prevMsgCountRef.current) {
-      const el = scrollContainerRef.current;
-      if (el) {
-        const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
-        if (nearBottom) {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-      }
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 50);
     }
     prevMsgCountRef.current = messages.length;
   }, [messages.length]);
+
+  // Handle virtual keyboard / viewport resize — keep input visible
+  useEffect(() => {
+    if (!("visualViewport" in window) || !window.visualViewport) return;
+
+    const vv = window.visualViewport;
+    const onResize = () => {
+      // Difference between layout viewport and visual viewport = keyboard height
+      const keyboardHeight = window.innerHeight - vv.height;
+      const root = document.documentElement;
+      if (keyboardHeight > 50) {
+        root.style.setProperty("--keyboard-height", `${keyboardHeight}px`);
+      } else {
+        root.style.setProperty("--keyboard-height", "0px");
+      }
+      // Scroll to bottom when keyboard opens
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    };
+
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
 
   // Redirect on chat end
   useEffect(() => {
@@ -199,7 +219,7 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="h-[100dvh] flex flex-col">
+    <div className="flex flex-col" style={{ height: "calc(100dvh - var(--keyboard-height, 0px))" }}>
       {/* Header */}
       <header className="glass border-b border-border/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -478,6 +498,7 @@ const ChatRoom = () => {
             value={messageInput}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+            onFocus={() => setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300)}
             placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
             className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
           />
