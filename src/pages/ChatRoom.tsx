@@ -56,7 +56,7 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot,
   } = useRoom(roomConfig);
 
   const isCreator = roomConfig?.isCreator ?? false;
@@ -132,6 +132,50 @@ const ChatRoom = () => {
       observerRef.current?.observe(el);
     });
   }, [messages.length]);
+
+  // Screenshot detection
+  useEffect(() => {
+    if (!roomConfig) return;
+    let lastScreenshotTime = 0;
+    const throttle = () => {
+      const now = Date.now();
+      if (now - lastScreenshotTime < 2000) return false;
+      lastScreenshotTime = now;
+      return true;
+    };
+
+    // Desktop: detect PrintScreen / Cmd+Shift+S / Cmd+Shift+3/4/5
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isPrintScreen = e.key === "PrintScreen";
+      const isMacScreenshot = e.metaKey && e.shiftKey && ["3", "4", "5", "s", "S"].includes(e.key);
+      const isWinSnip = e.ctrlKey && e.shiftKey && (e.key === "s" || e.key === "S");
+      if ((isPrintScreen || isMacScreenshot || isWinSnip) && throttle()) {
+        reportScreenshot();
+      }
+    };
+
+    // Mobile: use visibilitychange heuristic (brief hide+show within ~1s suggests screenshot)
+    let hideTime = 0;
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hideTime = Date.now();
+      } else if (document.visibilityState === "visible" && hideTime > 0) {
+        const elapsed = Date.now() - hideTime;
+        // Screenshot on most phones causes a very brief visibility toggle (< 1s)
+        if (elapsed > 100 && elapsed < 1500 && throttle()) {
+          reportScreenshot();
+        }
+        hideTime = 0;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [roomConfig, reportScreenshot]);
 
   const [isSending, setIsSending] = useState(false);
 
@@ -342,7 +386,12 @@ const ChatRoom = () => {
                     >
                       {evt.username[0]?.toUpperCase()}
                     </div>
-                    <span><span className="font-medium text-foreground">{evt.username}</span> has {evt.type === "join" ? "joined" : "left"}</span>
+                    <span>
+                      <span className="font-medium text-foreground">{evt.username}</span>
+                      {evt.type === "screenshot"
+                        ? " took a screenshot ⚠️"
+                        : ` has ${evt.type === "join" ? "joined" : "left"}`}
+                    </span>
                   </div>
                 </div>
               );
