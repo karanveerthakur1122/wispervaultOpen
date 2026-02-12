@@ -523,7 +523,10 @@ const MessageBubble = memo(({
   const handleMediaClick = useCallback(async () => {
     if (!msg.mediaUrl || !msg.mediaType || mediaObjectUrl) return;
     setLoadingMedia(true);
-    onMediaView(msg.mediaUrl);
+    // Only trigger auto-delete when a non-sender views the media
+    if (!msg.isOwn) {
+      onMediaView(msg.mediaUrl);
+    }
 
     try {
       const parsed = JSON.parse(msg.mediaUrl);
