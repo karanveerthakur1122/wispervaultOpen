@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.delete-media]
 verify_jwt = false
+
+[functions.cleanup-empty-rooms]
+verify_jwt = false
