@@ -9,7 +9,7 @@ import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRoom, type DecryptedMessage, type ReplyInfo } from "@/hooks/use-room";
+import { useRoom, type DecryptedMessage, type ReplyInfo, type SystemEvent } from "@/hooks/use-room";
 import { supabase } from "@/integrations/supabase/client";
 import { decryptFile, base64ToBuffer } from "@/lib/crypto";
 import { deriveKey } from "@/lib/crypto";
@@ -55,7 +55,7 @@ const ChatRoom = () => {
   }, [roomId, navigate]);
 
   const {
-    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage,
+    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents,
     sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, addReaction, togglePin, markAsRead, recordMediaView,
   } = useRoom(roomConfig);
 
@@ -294,25 +294,62 @@ const ChatRoom = () => {
           </div>
         )}
 
-        {messages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            msg={msg}
-            username={username}
-            activeReactionMsg={activeReactionMsg}
-            showContextMenu={showContextMenu}
-            onReaction={addReaction}
-            onSetActiveReaction={setActiveReactionMsg}
-            onSetContextMenu={setShowContextMenu}
-            onPin={togglePin}
-            onDelete={deleteMessage}
-            onMediaView={recordMediaView}
-            onlineUserCount={onlineUsers.length}
-            onReply={handleReply}
-            onScrollToMessage={scrollToMessage}
-            onLightbox={setLightboxUrl}
-          />
-        ))}
+        {/* Merged timeline: messages + system events */}
+        {(() => {
+          // Build combined timeline
+          type TimelineItem = 
+            | { type: "message"; data: DecryptedMessage }
+            | { type: "system"; data: SystemEvent };
+          
+          const timeline: TimelineItem[] = [
+            ...messages.map((m) => ({ type: "message" as const, data: m })),
+            ...systemEvents.map((e) => ({ type: "system" as const, data: e })),
+          ].sort((a, b) => {
+            const tA = a.type === "message" ? a.data.timestamp : a.data.timestamp;
+            const tB = b.type === "message" ? b.data.timestamp : b.data.timestamp;
+            return tA - tB;
+          });
+
+          return timeline.map((item) => {
+            if (item.type === "system") {
+              const evt = item.data;
+              return (
+                <div key={`sys-${evt.id}`} className="flex justify-center my-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-muted-foreground">
+                    <div
+                      className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold"
+                      style={{ backgroundColor: evt.color, color: "hsl(var(--background))" }}
+                    >
+                      {evt.username[0]?.toUpperCase()}
+                    </div>
+                    <span><span className="font-medium text-foreground">{evt.username}</span> has joined</span>
+                  </div>
+                </div>
+              );
+            }
+
+            const msg = item.data;
+            return (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                username={username}
+                activeReactionMsg={activeReactionMsg}
+                showContextMenu={showContextMenu}
+                onReaction={addReaction}
+                onSetActiveReaction={setActiveReactionMsg}
+                onSetContextMenu={setShowContextMenu}
+                onPin={togglePin}
+                onDelete={deleteMessage}
+                onMediaView={recordMediaView}
+                onlineUserCount={onlineUsers.length}
+                onReply={handleReply}
+                onScrollToMessage={scrollToMessage}
+                onLightbox={setLightboxUrl}
+              />
+            );
+          });
+        })()}
 
         {/* Sending bubble — optimistic preview with progress */}
         {isSending && sendingText !== null && (

@@ -1,20 +1,104 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Plus, LogIn, Shield, Lock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, LogIn, Shield, Lock, Clock, X, ArrowRight } from "lucide-react";
 import GlassCard from "@/components/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+
+interface RecentRoom {
+  roomId: string;
+  username: string;
+  avatarColor: string;
+  password: string;
+  joinedAt: number;
+}
+
+function getRecentRooms(): RecentRoom[] {
+  try {
+    return JSON.parse(localStorage.getItem("recent_rooms") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function removeRecentRoom(roomId: string) {
+  const rooms = getRecentRooms().filter((r) => r.roomId !== roomId);
+  localStorage.setItem("recent_rooms", JSON.stringify(rooms));
+  return rooms;
+}
 
 const Home = () => {
   const navigate = useNavigate();
   const [joinRoomId, setJoinRoomId] = useState("");
   const [showJoin, setShowJoin] = useState(false);
+  const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+  const [checkingRoom, setCheckingRoom] = useState<string | null>(null);
+
+  // Load and validate recent rooms on mount
+  useEffect(() => {
+    const validate = async () => {
+      const rooms = getRecentRooms();
+      if (rooms.length === 0) return;
+
+      // Check which rooms still exist
+      const { data } = await supabase
+        .from("rooms")
+        .select("room_id")
+        .in("room_id", rooms.map((r) => r.roomId))
+        .eq("active", true);
+
+      const activeIds = new Set(data?.map((r) => r.room_id) || []);
+      const validRooms = rooms.filter((r) => activeIds.has(r.roomId));
+      localStorage.setItem("recent_rooms", JSON.stringify(validRooms));
+      setRecentRooms(validRooms);
+    };
+    validate();
+  }, []);
 
   const handleJoin = () => {
     if (joinRoomId.trim()) {
       navigate(`/join/${joinRoomId.trim().toUpperCase()}`);
     }
+  };
+
+  const handleRejoin = async (room: RecentRoom) => {
+    setCheckingRoom(room.roomId);
+    try {
+      const { data } = await supabase
+        .from("rooms")
+        .select("room_id, active")
+        .eq("room_id", room.roomId)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (!data) {
+        // Room no longer exists — remove from recents
+        const updated = removeRecentRoom(room.roomId);
+        setRecentRooms(updated);
+        localStorage.removeItem(`room_${room.roomId}`);
+        return;
+      }
+
+      // Restore session and navigate
+      localStorage.setItem(`room_${room.roomId}`, JSON.stringify({
+        roomId: room.roomId,
+        password: room.password,
+        username: room.username,
+        avatarColor: room.avatarColor,
+        isCreator: false,
+      }));
+      navigate(`/room/${room.roomId}#key=${encodeURIComponent(room.password)}`);
+    } finally {
+      setCheckingRoom(null);
+    }
+  };
+
+  const handleRemoveRecent = (e: React.MouseEvent, roomId: string) => {
+    e.stopPropagation();
+    const updated = removeRecentRoom(roomId);
+    setRecentRooms(updated);
   };
 
   return (
@@ -97,6 +181,56 @@ const Home = () => {
             </motion.div>
           )}
         </div>
+
+        {/* Recent Rooms */}
+        <AnimatePresence>
+          {recentRooms.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-2"
+            >
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/60 px-1">
+                <Clock className="w-3 h-3" />
+                <span>Recent Rooms</span>
+              </div>
+              <div className="space-y-2">
+                {recentRooms.map((room) => (
+                  <motion.button
+                    key={room.roomId}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleRejoin(room)}
+                    disabled={checkingRoom === room.roomId}
+                    className="w-full glass rounded-xl px-4 py-3 flex items-center gap-3 text-left hover:bg-secondary/30 transition-all disabled:opacity-50"
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                      style={{ backgroundColor: room.avatarColor, color: "hsl(var(--background))" }}
+                    >
+                      {room.username[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-mono font-semibold tracking-wider text-foreground">
+                        {room.roomId}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        as {room.username}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => handleRemoveRecent(e, room.roomId)}
+                      className="p-1 text-muted-foreground/40 hover:text-muted-foreground"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground/40" />
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Footer */}
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/50 pt-4">
