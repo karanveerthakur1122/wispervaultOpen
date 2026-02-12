@@ -284,8 +284,8 @@ export function useRoom(config: RoomConfig | null) {
               });
               if (msg.is_pinned) setPinnedMessage(newMsg);
 
-              // Browser notification when tab is not focused
-              if (!newMsg.isOwn && document.hidden && "Notification" in window && Notification.permission === "granted") {
+              // Browser notification for new message
+              if (!newMsg.isOwn && "Notification" in window && Notification.permission === "granted") {
                 new Notification(`${newMsg.username}`, {
                   body: newMsg.mediaType ? "Sent a media file" : newMsg.text.slice(0, 100),
                   tag: `msg-${newMsg.id}`,
@@ -319,6 +319,15 @@ export function useRoom(config: RoomConfig | null) {
                   return { ...m, text, isPinned: msg.is_pinned, replyTo };
                 })
               );
+
+              // Browser notification for edited message
+              if (msg.sender_name !== config.username && "Notification" in window && Notification.permission === "granted") {
+                new Notification(`${msg.sender_name} edited a message`, {
+                  body: text.slice(0, 100),
+                  tag: `edit-${msg.id}`,
+                  silent: false,
+                });
+              }
               if (msg.is_pinned) {
                 const existing = messages.find((m) => m.id === msg.id);
                 if (existing) setPinnedMessage({ ...existing, text, isPinned: true });
@@ -358,7 +367,16 @@ export function useRoom(config: RoomConfig | null) {
                 if (m.reactions.some((rx) => rx.id === r.id)) return m;
                 return { ...m, reactions: [...m.reactions, { id: r.id, emoji: r.emoji, senderName: r.sender_name }] };
               })
+
             );
+
+            // Browser notification for reaction
+            if (r.sender_name !== config.username && "Notification" in window && Notification.permission === "granted") {
+              new Notification(`${r.sender_name} reacted ${r.emoji}`, {
+                tag: `reaction-${r.id}`,
+                silent: false,
+              });
+            }
           }
         )
         .on(
