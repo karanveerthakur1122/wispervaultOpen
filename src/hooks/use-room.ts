@@ -395,31 +395,43 @@ export function useRoom(config: RoomConfig | null) {
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
 
-  const sendMessage = useCallback(async (text: string, file?: File, replyTo?: ReplyInfo) => {
+  const sendMessage = useCallback(async (
+    text: string,
+    file?: File,
+    replyTo?: ReplyInfo,
+    onProgress?: (stage: string, percent: number) => void,
+  ) => {
     if (!config || !keyRef.current) return;
-    // Prepend reply metadata if replying
+    onProgress?.("encrypting", 10);
+
     const fullText = replyTo
       ? `[reply:${replyTo.messageId}:${replyTo.username}:${replyTo.preview}]${text || "(media)"}`
       : (text || "(media)");
     const { encrypted, iv } = await encryptMessage(fullText, keyRef.current);
+    onProgress?.("encrypting", 30);
 
     let mediaUrl: string | null = null;
     let mediaType: string | null = null;
 
     if (file) {
+      onProgress?.("encrypting", 40);
       const { encryptedBlob, iv: fileIv, mimeType } = await encryptFile(file, keyRef.current);
+      onProgress?.("uploading", 50);
+
       const filePath = `${config.roomId}/${crypto.randomUUID()}`;
       const { error } = await supabase.storage
         .from("encrypted-media")
         .upload(filePath, encryptedBlob);
+
+      onProgress?.("uploading", 85);
       
       if (!error) {
-        // Store path + iv as JSON in media_url
         mediaUrl = JSON.stringify({ path: filePath, iv: fileIv });
         mediaType = mimeType;
       }
     }
 
+    onProgress?.("sending", 90);
     await supabase.from("messages").insert({
       room_id: config.roomId,
       encrypted_blob: encrypted,
@@ -429,6 +441,7 @@ export function useRoom(config: RoomConfig | null) {
       media_url: mediaUrl,
       media_type: mediaType,
     });
+    onProgress?.("done", 100);
   }, [config]);
 
   const sendTyping = useCallback(() => {

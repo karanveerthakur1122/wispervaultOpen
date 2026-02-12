@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Download
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
@@ -35,6 +35,8 @@ const ChatRoom = () => {
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
   const [sendingText, setSendingText] = useState<string | null>(null);
   const [sendingFilePreview, setSendingFilePreview] = useState<string | null>(null);
+  const [sendProgress, setSendProgress] = useState<{ stage: string; percent: number } | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -118,14 +120,13 @@ const ChatRoom = () => {
     setIsSending(true);
     haptic.medium();
 
-    // Show sending bubble immediately
     const textToSend = messageInput.trim();
     setSendingText(textToSend || (selectedFile ? "(media)" : null));
     if (filePreviewUrl && selectedFile?.type.startsWith("image/")) {
       setSendingFilePreview(filePreviewUrl);
     }
+    setSendProgress({ stage: "compressing", percent: 5 });
 
-    // Clear input immediately for snappy UX
     setMessageInput("");
     const currentFile = selectedFile;
     const currentReply = replyTo;
@@ -136,13 +137,18 @@ const ChatRoom = () => {
     try {
       let fileToSend: File | undefined = currentFile || undefined;
       if (fileToSend) {
+        setSendProgress({ stage: "compressing", percent: 15 });
         fileToSend = await compressMedia(fileToSend);
+        setSendProgress({ stage: "encrypting", percent: 30 });
       }
-      await sendMessage(textToSend, fileToSend, currentReply || undefined);
+      await sendMessage(textToSend, fileToSend, currentReply || undefined, (stage, percent) => {
+        setSendProgress({ stage, percent });
+      });
     } finally {
       setIsSending(false);
       setSendingText(null);
       setSendingFilePreview(null);
+      setSendProgress(null);
     }
   }, [messageInput, selectedFile, replyTo, sendMessage, isSending, filePreviewUrl]);
 
@@ -304,25 +310,37 @@ const ChatRoom = () => {
             onlineUserCount={onlineUsers.length}
             onReply={handleReply}
             onScrollToMessage={scrollToMessage}
+            onLightbox={setLightboxUrl}
           />
         ))}
 
-        {/* Sending bubble — optimistic preview */}
+        {/* Sending bubble — optimistic preview with progress */}
         {isSending && sendingText !== null && (
           <div className="flex justify-end animate-fade-in">
             <div className="max-w-[80%]">
-              <div className="rounded-2xl rounded-br-md px-4 py-2.5 text-sm bg-primary/60 text-primary-foreground relative">
+              <div className="rounded-2xl rounded-br-md px-4 py-2.5 text-sm bg-primary/60 text-primary-foreground relative overflow-hidden">
                 {sendingFilePreview && (
                   <div className="mb-2 rounded-lg overflow-hidden opacity-70">
                     <img src={sendingFilePreview} alt="Sending..." className="max-w-full max-h-40 object-cover" />
                   </div>
                 )}
                 {sendingText !== "(media)" && <span className="opacity-80">{sendingText}</span>}
-                <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5">
-                  <span className="w-3 h-3 border-2 border-primary-foreground/40 border-t-primary-foreground rounded-full animate-spin" />
-                </div>
+
+                {/* Progress bar */}
+                {sendProgress && (
+                  <div className="mt-2">
+                    <div className="h-1 rounded-full bg-primary-foreground/20 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary-foreground/70 transition-all duration-300 ease-out"
+                        style={{ width: `${sendProgress.percent}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-primary-foreground/50 mt-1 capitalize">
+                      {sendProgress.stage === "done" ? "Sent!" : `${sendProgress.stage}...`}
+                    </p>
+                  </div>
+                )}
               </div>
-              <p className="text-[10px] text-muted-foreground/30 mt-0.5 mx-1">Sending...</p>
             </div>
           </div>
         )}
@@ -440,6 +458,37 @@ const ChatRoom = () => {
           </Button>
         </div>
       </div>
+
+      {/* Image Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center animate-fade-in"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="absolute top-4 right-4 flex gap-3 z-10">
+            <a
+              href={lightboxUrl}
+              download
+              onClick={(e) => e.stopPropagation()}
+              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
+            >
+              <Download className="w-5 h-5" />
+            </a>
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <img
+            src={lightboxUrl}
+            alt="Full size"
+            className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -460,12 +509,13 @@ interface MessageBubbleProps {
   onlineUserCount: number;
   onReply: (msg: DecryptedMessage) => void;
   onScrollToMessage: (msgId: string) => void;
+  onLightbox: (url: string) => void;
 }
 
 const MessageBubble = memo(({
   msg, username, activeReactionMsg, showContextMenu,
   onReaction, onSetActiveReaction, onSetContextMenu,
-  onPin, onDelete, onMediaView, onlineUserCount, onReply, onScrollToMessage,
+  onPin, onDelete, onMediaView, onlineUserCount, onReply, onScrollToMessage, onLightbox,
 }: MessageBubbleProps) => {
   const [mediaObjectUrl, setMediaObjectUrl] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -640,7 +690,12 @@ const MessageBubble = memo(({
             <div className="mb-2">
               {mediaObjectUrl ? (
                 msg.mediaType.startsWith("image/") ? (
-                  <img src={mediaObjectUrl} alt="Encrypted media" className="rounded-lg max-w-full" />
+                  <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl); }}>
+                    <img src={mediaObjectUrl} alt="Encrypted media" className="rounded-lg max-w-full" />
+                    <div className="absolute inset-0 bg-black/0 group-active:bg-black/20 rounded-lg transition-colors flex items-center justify-center">
+                      <ZoomIn className="w-6 h-6 text-white opacity-0 group-active:opacity-80 transition-opacity" />
+                    </div>
+                  </div>
                 ) : msg.mediaType.startsWith("video/") ? (
                   <video src={mediaObjectUrl} controls className="rounded-lg max-w-full" />
                 ) : msg.mediaType.startsWith("audio/") ? (
