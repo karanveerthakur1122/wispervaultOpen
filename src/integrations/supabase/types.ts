@@ -16,18 +16,21 @@ export type Database = {
     Tables: {
       media_views: {
         Row: {
+          delete_at: string
           first_viewed_at: string
           id: string
           media_url: string
           room_id: string
         }
         Insert: {
+          delete_at?: string
           first_viewed_at?: string
           id?: string
           media_url: string
           room_id: string
         }
         Update: {
+          delete_at?: string
           first_viewed_at?: string
           id?: string
           media_url?: string
