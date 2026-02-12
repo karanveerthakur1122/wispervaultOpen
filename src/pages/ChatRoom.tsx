@@ -322,7 +322,7 @@ const ChatRoom = () => {
                     >
                       {evt.username[0]?.toUpperCase()}
                     </div>
-                    <span><span className="font-medium text-foreground">{evt.username}</span> has joined</span>
+                    <span><span className="font-medium text-foreground">{evt.username}</span> has {evt.type === "join" ? "joined" : "left"}</span>
                   </div>
                 </div>
               );

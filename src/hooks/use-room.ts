@@ -410,6 +410,15 @@ export function useRoom(config: RoomConfig | null) {
             ]);
           }
         })
+        .on("broadcast", { event: "user:leave" }, (payload) => {
+          const { username: leftUser, color } = payload.payload as { username: string; color: string };
+          if (leftUser && leftUser !== config.username) {
+            setSystemEvents((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "leave", username: leftUser, color, timestamp: Date.now() },
+            ]);
+          }
+        })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
           // Broadcast join event once subscribed
@@ -509,6 +518,14 @@ export function useRoom(config: RoomConfig | null) {
 
   const leaveRoom = useCallback(async () => {
     if (!config) return;
+    // Broadcast leave event before disconnecting
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: "broadcast",
+        event: "user:leave",
+        payload: { username: config.username, color: config.avatarColor },
+      });
+    }
     // Remove own presence
     if (presenceIdRef.current) {
       await supabase.from("presence").delete().eq("id", presenceIdRef.current);
