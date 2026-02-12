@@ -3,10 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
+import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoom, type DecryptedMessage, type ReplyInfo, type SystemEvent } from "@/hooks/use-room";
@@ -44,6 +45,15 @@ const ChatRoom = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const voiceRecorder = useVoiceRecorder();
+
+  const formatDuration = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+
 
   useEffect(() => {
     if (!roomId) return;
@@ -61,6 +71,24 @@ const ChatRoom = () => {
   } = useRoom(roomConfig);
 
   const isCreator = roomConfig?.isCreator ?? false;
+
+  const handleVoiceSend = useCallback(async () => {
+    const file = await voiceRecorder.stop();
+    if (!file) return;
+    setIsSending(true);
+    setSendingText("🎤 Voice message");
+    setSendProgress({ stage: "encrypting", percent: 10 });
+    try {
+      await sendMessage("🎤 Voice message", file, replyTo || undefined, (stage, percent) => {
+        setSendProgress({ stage, percent });
+      });
+    } finally {
+      setIsSending(false);
+      setSendingText(null);
+      setSendProgress(null);
+      setReplyTo(null);
+    }
+  }, [voiceRecorder, sendMessage, replyTo]);
 
   // Auto-scroll on new messages — always scroll to bottom
   const prevMsgCountRef = useRef(0);
@@ -530,43 +558,81 @@ const ChatRoom = () => {
 
       {/* Input */}
       <div className="glass border-t border-border/50 p-3">
-        <div className="flex gap-2 items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 rounded-full text-muted-foreground active:scale-90 transition-transform"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Paperclip className="w-4 h-4" />
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-          <Input
-            ref={inputRef}
-            value={messageInput}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
-            className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
-          />
-          <Button
-            onClick={handleSend}
-            disabled={(!messageInput.trim() && !selectedFile) || isSending}
-            size="icon"
-            className="h-11 w-11 rounded-full bg-primary text-primary-foreground disabled:opacity-30 active:scale-90 transition-transform"
-          >
-            {isSending ? (
-              <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-            ) : (
+        {voiceRecorder.isRecording ? (
+          /* Voice recording UI */
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-full text-destructive active:scale-90 transition-transform"
+              onClick={voiceRecorder.cancel}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <div className="flex-1 flex items-center gap-3 px-4">
+              <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
+              <span className="text-sm font-mono text-foreground">{formatDuration(voiceRecorder.duration)}</span>
+              <span className="text-xs text-muted-foreground">Recording...</span>
+            </div>
+            <Button
+              onClick={handleVoiceSend}
+              size="icon"
+              className="h-11 w-11 rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform"
+            >
               <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-full text-muted-foreground active:scale-90 transition-transform"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="w-4 h-4" />
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <Input
+              ref={inputRef}
+              value={messageInput}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
+              className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
+            />
+            {messageInput.trim() || selectedFile ? (
+              <Button
+                onClick={handleSend}
+                disabled={isSending}
+                size="icon"
+                className="h-11 w-11 rounded-full bg-primary text-primary-foreground disabled:opacity-30 active:scale-90 transition-transform"
+              >
+                {isSending ? (
+                  <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => voiceRecorder.start()}
+                disabled={isSending}
+                size="icon"
+                variant="ghost"
+                className="h-11 w-11 rounded-full text-primary active:scale-90 transition-transform"
+              >
+                <Mic className="w-5 h-5" />
+              </Button>
             )}
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Image Lightbox */}
