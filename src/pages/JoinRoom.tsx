@@ -23,6 +23,20 @@ const JoinRoom = () => {
   const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0]);
   const [joining, setJoining] = useState(false);
 
+  // If user already has a session for this room (pressed back), redirect to room
+  useEffect(() => {
+    if (!roomId) return;
+    const stored = localStorage.getItem(`room_${roomId}`);
+    if (stored) {
+      try {
+        const session = JSON.parse(stored);
+        if (session?.password) {
+          navigate(`/room/${roomId}#key=${encodeURIComponent(session.password)}`, { replace: true });
+          return;
+        }
+      } catch {}
+    }
+  }, [roomId, navigate]);
   useEffect(() => {
     const hash = location.hash;
     const match = hash.match(/key=([^&]+)/);
@@ -95,7 +109,7 @@ const JoinRoom = () => {
       // Save to recent rooms
       const recentRooms = JSON.parse(localStorage.getItem("recent_rooms") || "[]");
       const filtered = recentRooms.filter((r: { roomId: string }) => r.roomId !== roomId);
-      filtered.unshift({ roomId, username: username.trim(), avatarColor: selectedColor, password, joinedAt: Date.now() });
+      filtered.unshift({ roomId, username: username.trim(), avatarColor: selectedColor, password, isCreator: false, joinedAt: Date.now() });
       localStorage.setItem("recent_rooms", JSON.stringify(filtered.slice(0, 10)));
 
       navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Copy, Check, Key, User } from "lucide-react";
@@ -22,6 +22,22 @@ const CreateRoom = () => {
   const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0]);
   const [copied, setCopied] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // If user has active session (pressed back), redirect to room
+  useEffect(() => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("room_")) {
+        try {
+          const session = JSON.parse(localStorage.getItem(key) || "");
+          if (session?.roomId && session?.password) {
+            navigate(`/room/${session.roomId}#key=${encodeURIComponent(session.password)}`, { replace: true });
+            return;
+          }
+        } catch {}
+      }
+    }
+  }, [navigate]);
 
   const handleCreate = async () => {
     if (!username.trim() || creating) return;
@@ -53,7 +69,7 @@ const CreateRoom = () => {
       // Save to recent rooms
       const recentRooms = JSON.parse(localStorage.getItem("recent_rooms") || "[]");
       const filtered = recentRooms.filter((r: { roomId: string }) => r.roomId !== roomId);
-      filtered.unshift({ roomId, username: username.trim(), avatarColor: selectedColor, password, joinedAt: Date.now() });
+      filtered.unshift({ roomId, username: username.trim(), avatarColor: selectedColor, password, isCreator: true, joinedAt: Date.now() });
       localStorage.setItem("recent_rooms", JSON.stringify(filtered.slice(0, 10)));
 
       navigate(`/room/${roomId}#key=${encodeURIComponent(password)}`);
