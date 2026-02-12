@@ -137,72 +137,36 @@ const ChatRoom = () => {
   // Screenshot prevention & detection
   useEffect(() => {
     if (!roomConfig) return;
-    let lastScreenshotTime = 0;
-    const throttle = () => {
-      const now = Date.now();
-      if (now - lastScreenshotTime < 3000) return false;
-      lastScreenshotTime = now;
-      return true;
-    };
-
-    const triggerBlackScreen = () => {
-      setScreenBlocked(true);
-      if (throttle()) reportScreenshot();
-      // Auto-clear after 3 seconds once visible again
-      const clear = () => {
-        if (document.visibilityState === "visible") {
-          setTimeout(() => setScreenBlocked(false), 1500);
-          document.removeEventListener("visibilitychange", clear);
-        }
-      };
-      if (document.visibilityState === "visible") {
-        setTimeout(() => setScreenBlocked(false), 1500);
-      } else {
-        document.addEventListener("visibilitychange", clear);
-      }
-    };
 
     // Desktop: detect PrintScreen / Cmd+Shift+S / Cmd+Shift+3/4/5
+    // Only keyboard shortcuts reliably indicate a screenshot — so only these broadcast
     const handleKeyDown = (e: KeyboardEvent) => {
       const isPrintScreen = e.key === "PrintScreen";
       const isMacScreenshot = e.metaKey && e.shiftKey && ["3", "4", "5", "s", "S"].includes(e.key);
       const isWinSnip = e.ctrlKey && e.shiftKey && (e.key === "s" || e.key === "S");
       if (isPrintScreen || isMacScreenshot || isWinSnip) {
         e.preventDefault();
-        triggerBlackScreen();
+        setScreenBlocked(true);
+        reportScreenshot();
+        setTimeout(() => setScreenBlocked(false), 1500);
       }
     };
 
-    // Mobile + tablet: black screen on ANY blur / visibility hidden
-    // This catches screenshot attempts since they cause focus loss on most devices
+    // Visual protection only — black screen when app is not in foreground
+    // No broadcast here since we can't distinguish screenshots from normal tab switches
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
         setScreenBlocked(true);
-        if (throttle()) reportScreenshot();
       } else {
-        // Delay unblock so screenshot captures black
-        setTimeout(() => setScreenBlocked(false), 800);
+        setTimeout(() => setScreenBlocked(false), 400);
       }
-    };
-
-    const handleBlur = () => {
-      // Black screen on blur (protection) but don't broadcast — avoids false positives from normal tab switches
-      setScreenBlocked(true);
-    };
-
-    const handleFocus = () => {
-      setTimeout(() => setScreenBlocked(false), 800);
     };
 
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
     };
   }, [roomConfig, reportScreenshot]);
 
