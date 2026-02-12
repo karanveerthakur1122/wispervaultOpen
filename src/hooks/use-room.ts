@@ -87,6 +87,13 @@ export function useRoom(config: RoomConfig | null) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if (config && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, [config?.roomId]);
+
   // Derive key on mount
   useEffect(() => {
     if (!config) return;
@@ -276,6 +283,15 @@ export function useRoom(config: RoomConfig | null) {
                 return [...prev, newMsg];
               });
               if (msg.is_pinned) setPinnedMessage(newMsg);
+
+              // Browser notification when tab is not focused
+              if (!newMsg.isOwn && document.hidden && "Notification" in window && Notification.permission === "granted") {
+                new Notification(`${newMsg.username}`, {
+                  body: newMsg.mediaType ? "Sent a media file" : newMsg.text.slice(0, 100),
+                  tag: `msg-${newMsg.id}`,
+                  silent: false,
+                });
+              }
             } catch {}
           }
         )
