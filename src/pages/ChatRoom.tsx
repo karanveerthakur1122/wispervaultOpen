@@ -553,6 +553,8 @@ const MessageBubble = memo(({
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
 
   const isShowingReactions = activeReactionMsg === msg.id;
   const isShowingContext = showContextMenu === msg.id;
@@ -595,7 +597,7 @@ const MessageBubble = memo(({
     };
   }, [mediaObjectUrl]);
 
-  // Native touch handlers for swipe-to-reply (GPU-accelerated, no framer-motion overhead)
+  // Native touch handlers for swipe-to-reply + long-press-to-react
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartRef.current = {
       x: e.touches[0].clientX,
@@ -603,12 +605,28 @@ const MessageBubble = memo(({
       time: Date.now(),
     };
     swipingRef.current = false;
-  }, []);
+    longPressFiredRef.current = false;
+
+    // Start long-press timer (500ms)
+    longPressTimerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      haptic.medium();
+      onSetActiveReaction(isShowingReactions ? null : msg.id);
+    }, 500);
+  }, [msg.id, isShowingReactions, onSetActiveReaction]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchStartRef.current) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
     const dy = e.touches[0].clientY - touchStartRef.current.y;
+
+    // Cancel long-press if finger moves
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
 
     // Lock direction after 10px movement
     if (!swipingRef.current && Math.abs(dx) > 10) {
@@ -638,6 +656,20 @@ const MessageBubble = memo(({
   }, [msg.isOwn]);
 
   const handleTouchEnd = useCallback(() => {
+    // Clear long-press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    // If long-press fired, don't process swipe
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      touchStartRef.current = null;
+      swipingRef.current = false;
+      return;
+    }
+
     if (swipingRef.current && Math.abs(swipeOffset) > 50) {
       haptic.light();
       onReply(msg);
@@ -673,7 +705,7 @@ const MessageBubble = memo(({
     <div
       data-msg-id={msg.id}
       className={`flex ${msg.isOwn ? "justify-end" : "justify-start"} relative animate-fade-in`}
-      onDoubleClick={(e) => { e.stopPropagation(); onSetActiveReaction(isShowingReactions ? null : msg.id); }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Reply swipe icon */}
       <div
