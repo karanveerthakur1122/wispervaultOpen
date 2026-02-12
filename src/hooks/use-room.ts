@@ -69,7 +69,7 @@ function parseReply(raw: string): { text: string; replyTo: ReplyInfo | null } {
 
 export interface SystemEvent {
   id: string;
-  type: "join" | "leave";
+  type: "join" | "leave" | "screenshot";
   username: string;
   color: string;
   timestamp: number;
@@ -493,6 +493,13 @@ export function useRoom(config: RoomConfig | null) {
             ]);
           }
         })
+        .on("broadcast", { event: "screenshot" }, (payload) => {
+          const { username: ssUser, color } = payload.payload as { username: string; color: string };
+          setSystemEvents((prev) => [
+            ...prev,
+            { id: crypto.randomUUID(), type: "screenshot", username: ssUser, color, timestamp: Date.now() },
+          ]);
+        })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
           // Broadcast join event once subscribed
@@ -788,6 +795,20 @@ export function useRoom(config: RoomConfig | null) {
     };
   }, [config]);
 
+  const reportScreenshot = useCallback(() => {
+    if (!config || !channelRef.current) return;
+    channelRef.current.send({
+      type: "broadcast",
+      event: "screenshot",
+      payload: { username: config.username, color: config.avatarColor },
+    });
+    // Also add locally
+    setSystemEvents((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), type: "screenshot", username: config.username, color: config.avatarColor, timestamp: Date.now() },
+    ]);
+  }, [config]);
+
   return {
     messages,
     onlineUsers,
@@ -806,5 +827,6 @@ export function useRoom(config: RoomConfig | null) {
     togglePin,
     markAsRead,
     recordMediaView,
+    reportScreenshot,
   };
 }
