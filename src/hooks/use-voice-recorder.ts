@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 export interface VoiceRecorderState {
   isRecording: boolean;
   duration: number;
+  stream: MediaStream | null;
   start: () => Promise<void>;
   stop: () => Promise<File | null>;
   cancel: () => void;
@@ -110,5 +111,5 @@ export function useVoiceRecorder(): VoiceRecorderState {
     };
   }, [cancel]);
 
-  return { isRecording, duration, start, stop, cancel };
+  return { isRecording, duration, stream: streamRef.current, start, stop, cancel };
 }
