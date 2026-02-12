@@ -6,6 +6,7 @@ import {
   Check, CheckCheck, X, Image as ImageIcon, Reply
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { compressMedia } from "@/lib/media-compress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoom, type DecryptedMessage, type ReplyInfo } from "@/hooks/use-room";
@@ -107,14 +108,28 @@ const ChatRoom = () => {
     });
   }, [messages.length]);
 
+  const [isSending, setIsSending] = useState(false);
+
   const handleSend = useCallback(async () => {
-    if (!messageInput.trim() && !selectedFile) return;
+    if ((!messageInput.trim() && !selectedFile) || isSending) return;
+    setIsSending(true);
     haptic.medium();
-    await sendMessage(messageInput.trim(), selectedFile || undefined, replyTo || undefined);
-    setMessageInput("");
-    setSelectedFile(null);
-    setReplyTo(null);
-  }, [messageInput, selectedFile, replyTo, sendMessage]);
+
+    try {
+      // Compress media before sending
+      let fileToSend = selectedFile || undefined;
+      if (fileToSend) {
+        fileToSend = await compressMedia(fileToSend);
+      }
+
+      await sendMessage(messageInput.trim(), fileToSend, replyTo || undefined);
+      setMessageInput("");
+      setSelectedFile(null);
+      setReplyTo(null);
+    } finally {
+      setIsSending(false);
+    }
+  }, [messageInput, selectedFile, replyTo, sendMessage, isSending]);
 
   const handleReply = useCallback((msg: DecryptedMessage) => {
     haptic.light();
@@ -340,11 +355,15 @@ const ChatRoom = () => {
           />
           <Button
             onClick={handleSend}
-            disabled={!messageInput.trim() && !selectedFile}
+            disabled={(!messageInput.trim() && !selectedFile) || isSending}
             size="icon"
             className="h-11 w-11 rounded-full bg-primary text-primary-foreground disabled:opacity-30 active:scale-90 transition-transform"
           >
-            <Send className="w-4 h-4" />
+            {isSending ? (
+              <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
           </Button>
         </div>
       </div>
