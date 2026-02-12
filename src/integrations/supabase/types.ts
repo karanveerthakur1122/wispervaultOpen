@@ -217,6 +217,7 @@ export type Database = {
           active: boolean
           created_at: string
           id: string
+          password_hash: string | null
           room_id: string
           user_count: number
         }
@@ -224,6 +225,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          password_hash?: string | null
           room_id: string
           user_count?: number
         }
@@ -231,6 +233,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          password_hash?: string | null
           room_id?: string
           user_count?: number
         }

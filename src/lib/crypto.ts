@@ -127,3 +127,15 @@ export function generatePassword(): string {
   const arr = crypto.getRandomValues(new Uint8Array(16));
   return Array.from(arr, (b) => chars[b % chars.length]).join('');
 }
+
+/** Hash a password for storage (SHA-256 hex) */
+export async function hashPassword(password: string): Promise<string> {
+  const enc = new TextEncoder();
+  const digest = await crypto.subtle.digest('SHA-256', enc.encode(password));
+  const bytes = new Uint8Array(digest);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
