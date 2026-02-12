@@ -87,12 +87,30 @@ export function useRoom(config: RoomConfig | null) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
 
-  // Request notification permission on mount
+  // Register service worker + request notification permission
   useEffect(() => {
-    if (config && "Notification" in window && Notification.permission === "default") {
+    if (!config) return;
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+    if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, [config?.roomId]);
+
+  // Helper to show notification via SW (mobile-compatible) or fallback
+  const showNotification = useCallback((title: string, options?: NotificationOptions) => {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification(title, { ...options, icon: "/favicon.ico" });
+      }).catch(() => {
+        try { new Notification(title, options); } catch {}
+      });
+    } else {
+      try { new Notification(title, options); } catch {}
+    }
+  }, []);
 
   // Derive key on mount
   useEffect(() => {
@@ -285,8 +303,8 @@ export function useRoom(config: RoomConfig | null) {
               if (msg.is_pinned) setPinnedMessage(newMsg);
 
               // Browser notification for new message
-              if (!newMsg.isOwn && "Notification" in window && Notification.permission === "granted") {
-                new Notification(`${newMsg.username}`, {
+              if (!newMsg.isOwn) {
+                showNotification(newMsg.username, {
                   body: newMsg.mediaType ? "Sent a media file" : newMsg.text.slice(0, 100),
                   tag: `msg-${newMsg.id}`,
                   silent: false,
@@ -321,8 +339,8 @@ export function useRoom(config: RoomConfig | null) {
               );
 
               // Browser notification for edited message
-              if (msg.sender_name !== config.username && "Notification" in window && Notification.permission === "granted") {
-                new Notification(`${msg.sender_name} edited a message`, {
+              if (msg.sender_name !== config.username) {
+                showNotification(`${msg.sender_name} edited a message`, {
                   body: text.slice(0, 100),
                   tag: `edit-${msg.id}`,
                   silent: false,
@@ -371,8 +389,8 @@ export function useRoom(config: RoomConfig | null) {
             );
 
             // Browser notification for reaction
-            if (r.sender_name !== config.username && "Notification" in window && Notification.permission === "granted") {
-              new Notification(`${r.sender_name} reacted ${r.emoji}`, {
+            if (r.sender_name !== config.username) {
+              showNotification(`${r.sender_name} reacted ${r.emoji}`, {
                 tag: `reaction-${r.id}`,
                 silent: false,
               });
