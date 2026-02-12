@@ -214,6 +214,7 @@ export function PlaybackWaveform({ src, isOwn }: PlaybackWaveformProps) {
   };
 
   const currentTime = audioRef.current ? audioRef.current.currentTime : 0;
+  const statusLabel = isPlaying ? "Playing" : progress > 0 && progress < 1 ? "Paused" : "";
 
   return (
     <div className="flex items-center gap-2 min-w-[180px] max-w-[240px]">
@@ -235,9 +236,16 @@ export function PlaybackWaveform({ src, isOwn }: PlaybackWaveformProps) {
           className="w-full h-7 cursor-pointer"
           onClick={handleSeek}
         />
-        <span className={`text-[10px] ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-          {isPlaying ? formatTime(currentTime) : formatTime(duration)}
-        </span>
+        <div className="flex items-center justify-between">
+          <span className={`text-[10px] ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+            {isPlaying ? formatTime(currentTime) : formatTime(duration)}
+          </span>
+          {statusLabel && (
+            <span className={`text-[9px] font-medium ${isOwn ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>
+              {statusLabel}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

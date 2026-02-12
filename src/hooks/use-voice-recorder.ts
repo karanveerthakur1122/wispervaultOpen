@@ -45,7 +45,10 @@ export function useVoiceRecorder(): VoiceRecorderState {
         ? "audio/webm"
         : "audio/mp4";
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: 256000, // HD quality – no compression
+      });
       recorderRef.current = recorder;
       chunksRef.current = [];
 
