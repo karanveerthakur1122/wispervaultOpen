@@ -300,17 +300,39 @@ export function useRoom(config: RoomConfig | null) {
           { event: "UPDATE", schema: "public", table: "messages", filter: `room_id=eq.${config.roomId}` },
           async (payload) => {
             const msg = payload.new as Tables<"messages">;
-            setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id !== msg.id) return m;
-                return { ...m, isPinned: msg.is_pinned };
-              })
-            );
-            if (msg.is_pinned) {
-              const existing = messages.find((m) => m.id === msg.id);
-              if (existing) setPinnedMessage({ ...existing, isPinned: true });
-            } else {
+            if (!keyRef.current) return;
+            
+            // If deleted, remove from list
+            if (msg.is_deleted) {
+              setMessages((prev) => prev.filter((m) => m.id !== msg.id));
               setPinnedMessage((p) => (p?.id === msg.id ? null : p));
+              return;
+            }
+
+            try {
+              const rawText = await decryptMessage(msg.encrypted_blob, msg.iv, keyRef.current);
+              const { text, replyTo } = parseReply(rawText);
+              
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== msg.id) return m;
+                  return { ...m, text, isPinned: msg.is_pinned, replyTo };
+                })
+              );
+              if (msg.is_pinned) {
+                const existing = messages.find((m) => m.id === msg.id);
+                if (existing) setPinnedMessage({ ...existing, text, isPinned: true });
+              } else {
+                setPinnedMessage((p) => (p?.id === msg.id ? null : p));
+              }
+            } catch {
+              // Just update pin status if decryption fails
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== msg.id) return m;
+                  return { ...m, isPinned: msg.is_pinned };
+                })
+              );
             }
           }
         )
@@ -571,6 +593,23 @@ export function useRoom(config: RoomConfig | null) {
     await supabase.from("messages").delete().eq("id", messageId);
   }, []);
 
+  const editMessage = useCallback(async (messageId: string, newText: string) => {
+    if (!config || !keyRef.current) return;
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg || !msg.isOwn) return;
+
+    // Preserve reply prefix if original had one
+    const fullText = msg.replyTo
+      ? `[reply:${msg.replyTo.messageId}:${msg.replyTo.username}:${msg.replyTo.preview}]${newText}`
+      : newText;
+
+    const { encrypted, iv } = await encryptMessage(fullText, keyRef.current);
+    await supabase.from("messages").update({
+      encrypted_blob: encrypted,
+      iv,
+    }).eq("id", messageId);
+  }, [config, messages]);
+
   const addReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!config) return;
     // Toggle: if already reacted with same emoji, remove
@@ -726,6 +765,7 @@ export function useRoom(config: RoomConfig | null) {
     endChat,
     leaveRoom,
     deleteMessage,
+    editMessage,
     addReaction,
     togglePin,
     markAsRead,
