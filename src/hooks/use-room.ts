@@ -132,7 +132,7 @@ export function useRoom(config: RoomConfig | null) {
         .maybeSingle();
 
       if (!existingRoom) {
-        await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1 });
+        await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1, empty_since: null });
       } else {
         // Use actual active presence count instead of stale user_count
         const { count } = await supabase
@@ -142,10 +142,10 @@ export function useRoom(config: RoomConfig | null) {
           .eq("is_active", true);
 
         const activeCount = count ?? 0;
-        // Sync the room's user_count with reality
+        // Sync the room's user_count with reality, clear empty_since since someone joined
         await supabase
           .from("rooms")
-          .update({ user_count: activeCount + 1 })
+          .update({ user_count: activeCount + 1, empty_since: null })
           .eq("room_id", config.roomId);
       }
 
@@ -363,6 +363,20 @@ export function useRoom(config: RoomConfig | null) {
             if (data) {
               const uniqueUsers = deduplicatePresence(data);
               setOnlineUsers(uniqueUsers);
+
+              // Update room empty_since based on active user count
+              if (uniqueUsers.length === 0) {
+                await supabase
+                  .from("rooms")
+                  .update({ user_count: 0, empty_since: new Date().toISOString() })
+                  .eq("room_id", config.roomId)
+                  .is("empty_since", null);
+              } else {
+                await supabase
+                  .from("rooms")
+                  .update({ user_count: uniqueUsers.length, empty_since: null })
+                  .eq("room_id", config.roomId);
+              }
             }
           }
         )
@@ -474,16 +488,20 @@ export function useRoom(config: RoomConfig | null) {
       await supabase.from("presence").delete().eq("id", presenceIdRef.current);
       presenceIdRef.current = null;
     }
-    // Decrement user count
+    // Decrement user count and set empty_since if room is now empty
     const { data: room } = await supabase
       .from("rooms")
       .select("user_count")
       .eq("room_id", config.roomId)
       .maybeSingle();
     if (room) {
+      const newCount = Math.max(0, room.user_count - 1);
       await supabase
         .from("rooms")
-        .update({ user_count: Math.max(0, room.user_count - 1) })
+        .update({
+          user_count: newCount,
+          empty_since: newCount === 0 ? new Date().toISOString() : null,
+        })
         .eq("room_id", config.roomId);
     }
     localStorage.removeItem(`room_${config.roomId}`);

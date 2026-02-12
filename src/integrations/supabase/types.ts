@@ -219,6 +219,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          empty_since: string | null
           id: string
           password_hash: string | null
           room_id: string
@@ -227,6 +228,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          empty_since?: string | null
           id?: string
           password_hash?: string | null
           room_id: string
@@ -235,6 +237,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          empty_since?: string | null
           id?: string
           password_hash?: string | null
           room_id?: string
