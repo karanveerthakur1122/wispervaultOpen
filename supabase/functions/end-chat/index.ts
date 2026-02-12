@@ -26,20 +26,43 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Delete all messages
+    // Delete in correct FK order: children first, then parents
+
+    // 1. Delete reactions (FK -> messages)
+    await supabase.from("reactions").delete().eq("room_id", room_id);
+
+    // 2. Delete read receipts (FK -> messages)
+    await supabase.from("read_receipts").delete().eq("room_id", room_id);
+
+    // 3. Delete media views (FK -> rooms)
+    await supabase.from("media_views").delete().eq("room_id", room_id);
+
+    // 4. Delete encrypted media from storage
+    const { data: mediaFiles } = await supabase.storage
+      .from("encrypted-media")
+      .list(room_id);
+    if (mediaFiles && mediaFiles.length > 0) {
+      const paths = mediaFiles.map((f) => `${room_id}/${f.name}`);
+      await supabase.storage.from("encrypted-media").remove(paths);
+    }
+
+    // 5. Delete all messages (FK -> rooms)
     await supabase.from("messages").delete().eq("room_id", room_id);
 
-    // Delete all presence
+    // 6. Delete all presence (FK -> rooms)
     await supabase.from("presence").delete().eq("room_id", room_id);
 
-    // Delete the room
+    // 7. Delete the room
     await supabase.from("rooms").delete().eq("room_id", room_id);
+
+    console.log(`Room ${room_id} fully deleted`);
 
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("end-chat error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
