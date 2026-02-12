@@ -21,33 +21,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Parse the media_url JSON to get storage path
-    let storagePath: string;
-    try {
-      const parsed = JSON.parse(media_url);
-      storagePath = parsed.path;
-    } catch {
-      storagePath = media_url;
-    }
-
-    // Delete from storage immediately
-    await supabase.storage.from("encrypted-media").remove([storagePath]);
-
-    // Delete media_views record
-    await supabase.from("media_views").delete().eq("media_url", media_url);
-
-    // Null out media_url in messages so UI shows media was deleted
-    await supabase
-      .from("messages")
-      .update({ media_url: null, media_type: null })
-      .eq("media_url", media_url)
-      .eq("room_id", room_id);
-
+    // Just record the view — actual deletion happens on "End Chat"
+    // This preserves media for all participants until the room is destroyed
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -520,14 +520,12 @@ const MessageBubble = memo(({
   const isShowingReactions = activeReactionMsg === msg.id;
   const isShowingContext = showContextMenu === msg.id;
 
-  const handleMediaClick = useCallback(async () => {
-    if (!msg.mediaUrl || !msg.mediaType || mediaObjectUrl) return;
+  const decryptMedia = useCallback(async () => {
+    if (!msg.mediaUrl || !msg.mediaType || mediaObjectUrl || loadingMedia) return;
     setLoadingMedia(true);
-    // Only trigger auto-delete when a non-sender views the media
     if (!msg.isOwn) {
       onMediaView(msg.mediaUrl);
     }
-
     try {
       const parsed = JSON.parse(msg.mediaUrl);
       const { data } = await supabase.storage.from("encrypted-media").download(parsed.path);
@@ -545,7 +543,14 @@ const MessageBubble = memo(({
       console.error("Failed to decrypt media:", e);
     }
     setLoadingMedia(false);
-  }, [msg.mediaUrl, msg.mediaType, mediaObjectUrl, onMediaView]);
+  }, [msg.mediaUrl, msg.mediaType, mediaObjectUrl, loadingMedia, onMediaView, msg.isOwn]);
+
+  // Auto-decrypt media on mount
+  useEffect(() => {
+    if (msg.mediaUrl && msg.mediaType && !mediaObjectUrl && !loadingMedia) {
+      decryptMedia();
+    }
+  }, [msg.mediaUrl, msg.mediaType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => {
@@ -700,7 +705,7 @@ const MessageBubble = memo(({
                 )
               ) : (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleMediaClick(); }}
+                  onClick={(e) => { e.stopPropagation(); decryptMedia(); }}
                   className="flex items-center gap-2 text-xs text-primary/70 py-2"
                 >
                   <ImageIcon className="w-4 h-4" />
