@@ -8,6 +8,7 @@ import {
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
+import { RecordingWaveform, PlaybackWaveform } from "@/components/VoiceWaveform";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoom, type DecryptedMessage, type ReplyInfo, type SystemEvent } from "@/hooks/use-room";
@@ -569,10 +570,10 @@ const ChatRoom = () => {
             >
               <X className="w-5 h-5" />
             </Button>
-            <div className="flex-1 flex items-center gap-3 px-4">
-              <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
-              <span className="text-sm font-mono text-foreground">{formatDuration(voiceRecorder.duration)}</span>
-              <span className="text-xs text-muted-foreground">Recording...</span>
+            <div className="flex-1 flex items-center gap-3 px-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse flex-shrink-0" />
+              <RecordingWaveform stream={voiceRecorder.stream} />
+              <span className="text-sm font-mono text-foreground flex-shrink-0">{formatDuration(voiceRecorder.duration)}</span>
             </div>
             <Button
               onClick={handleVoiceSend}
@@ -911,7 +912,7 @@ const MessageBubble = memo(({
                 ) : msg.mediaType.startsWith("video/") ? (
                   <video src={mediaObjectUrl} controls className="rounded-lg max-w-full" />
                 ) : msg.mediaType.startsWith("audio/") ? (
-                  <audio src={mediaObjectUrl} controls className="w-full" />
+                  <PlaybackWaveform src={mediaObjectUrl} isOwn={msg.isOwn} />
                 ) : (
                   <a href={mediaObjectUrl} download className="text-primary underline text-xs">Download file</a>
                 )
