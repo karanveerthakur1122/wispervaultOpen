@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
@@ -56,7 +56,7 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, addReaction, togglePin, markAsRead, recordMediaView,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView,
   } = useRoom(roomConfig);
 
   const isCreator = roomConfig?.isCreator ?? false;
@@ -361,6 +361,7 @@ const ChatRoom = () => {
                 onSetContextMenu={setShowContextMenu}
                 onPin={togglePin}
                 onDelete={deleteMessage}
+                onEdit={editMessage}
                 onMediaView={recordMediaView}
                 onlineUserCount={onlineUsers.length}
                 onReply={handleReply}
@@ -554,6 +555,7 @@ interface MessageBubbleProps {
   onSetContextMenu: (id: string | null) => void;
   onPin: (messageId: string) => void;
   onDelete: (messageId: string) => void;
+  onEdit: (messageId: string, newText: string) => void;
   onMediaView: (mediaUrl: string) => void;
   onlineUserCount: number;
   onReply: (msg: DecryptedMessage) => void;
@@ -564,11 +566,14 @@ interface MessageBubbleProps {
 const MessageBubble = memo(({
   msg, username, activeReactionMsg, showContextMenu,
   onReaction, onSetActiveReaction, onSetContextMenu,
-  onPin, onDelete, onMediaView, onlineUserCount, onReply, onScrollToMessage, onLightbox,
+  onPin, onDelete, onEdit, onMediaView, onlineUserCount, onReply, onScrollToMessage, onLightbox,
 }: MessageBubbleProps) => {
   const [mediaObjectUrl, setMediaObjectUrl] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [showReadBy, setShowReadBy] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const swipingRef = useRef(false);
@@ -804,7 +809,37 @@ const MessageBubble = memo(({
             </div>
           )}
 
-          {msg.text !== "(media)" && <span>{msg.text}</span>}
+          {msg.text !== "(media)" && (
+            isEditing ? (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <input
+                  ref={editInputRef}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (editText.trim()) onEdit(msg.id, editText.trim());
+                      setIsEditing(false);
+                    }
+                    if (e.key === "Escape") setIsEditing(false);
+                  }}
+                  className="flex-1 bg-transparent border-b border-primary-foreground/30 text-sm outline-none py-0.5 min-w-0"
+                  autoFocus
+                />
+                <button
+                  onClick={() => { if (editText.trim()) onEdit(msg.id, editText.trim()); setIsEditing(false); }}
+                  className="p-1"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => setIsEditing(false)} className="p-1">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <span>{msg.text}</span>
+            )
+          )}
         </div>
 
         {/* Reactions display */}
@@ -894,6 +929,14 @@ const MessageBubble = memo(({
             >
               <Pin className="w-3 h-3" /> {msg.isPinned ? "Unpin" : "Pin"}
             </button>
+            {msg.isOwn && !msg.mediaUrl && msg.text !== "(media)" && (
+              <button
+                onClick={() => { setEditText(msg.text); setIsEditing(true); onSetContextMenu(null); setTimeout(() => editInputRef.current?.focus(), 50); }}
+                className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+              >
+                <Pencil className="w-3 h-3" /> Edit
+              </button>
+            )}
             {msg.isOwn && (
               <button
                 onClick={() => { onDelete(msg.id); onSetContextMenu(null); }}
