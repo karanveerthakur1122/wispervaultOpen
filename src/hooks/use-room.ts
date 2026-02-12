@@ -126,7 +126,7 @@ export function useRoom(config: RoomConfig | null) {
     const setup = async () => {
       const { data: existingRoom } = await supabase
         .from("rooms")
-        .select("*")
+        .select("room_id, user_count, active")
         .eq("room_id", config.roomId)
         .eq("active", true)
         .maybeSingle();
