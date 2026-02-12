@@ -21,48 +21,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Schedule deletion after 2 hours
-    const deleteAfterMs = 2 * 60 * 60 * 1000; // 2 hours
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    // Wait 2 hours then delete
-    setTimeout(async () => {
-      try {
-        const supabase = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
+    // Parse the media_url JSON to get storage path
+    let storagePath: string;
+    try {
+      const parsed = JSON.parse(media_url);
+      storagePath = parsed.path;
+    } catch {
+      storagePath = media_url;
+    }
 
-        // Parse the media_url JSON to get storage path
-        let storagePath: string;
-        try {
-          const parsed = JSON.parse(media_url);
-          storagePath = parsed.path;
-        } catch {
-          storagePath = media_url;
-        }
+    // Delete from storage immediately
+    await supabase.storage.from("encrypted-media").remove([storagePath]);
 
-        // Delete from storage
-        await supabase.storage.from("encrypted-media").remove([storagePath]);
+    // Delete media_views record
+    await supabase.from("media_views").delete().eq("media_url", media_url);
 
-        // Delete media_views record
-        await supabase.from("media_views").delete().eq("media_url", media_url);
-
-        // Null out media_url in messages
-        await supabase
-          .from("messages")
-          .update({ media_url: null, media_type: null })
-          .eq("media_url", media_url)
-          .eq("room_id", room_id);
-      } catch (e) {
-        console.error("Failed to delete media:", e);
-      }
-    }, deleteAfterMs);
+    // Null out media_url in messages so UI shows media was deleted
+    await supabase
+      .from("messages")
+      .update({ media_url: null, media_type: null })
+      .eq("media_url", media_url)
+      .eq("room_id", room_id);
 
     return new Response(
-      JSON.stringify({ success: true, delete_at: new Date(Date.now() + deleteAfterMs).toISOString() }),
+      JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("delete-media error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

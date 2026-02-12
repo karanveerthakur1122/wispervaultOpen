@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Download
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
@@ -465,15 +465,7 @@ const ChatRoom = () => {
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center animate-fade-in"
           onClick={() => setLightboxUrl(null)}
         >
-          <div className="absolute top-4 right-4 flex gap-3 z-10">
-            <a
-              href={lightboxUrl}
-              download
-              onClick={(e) => e.stopPropagation()}
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
-            >
-              <Download className="w-5 h-5" />
-            </a>
+          <div className="absolute top-4 right-4 z-10">
             <button
               onClick={() => setLightboxUrl(null)}
               className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
