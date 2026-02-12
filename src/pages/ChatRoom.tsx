@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, RefreshCw, Reply
+  Check, CheckCheck, X, Image as ImageIcon, Reply
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,6 @@ const ChatRoom = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [activeReactionMsg, setActiveReactionMsg] = useState<string | null>(null);
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,10 +37,6 @@ const ChatRoom = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const pullY = useMotionValue(0);
-  const pullOpacity = useTransform(pullY, [0, -60], [0, 1]);
-  const pullRotate = useTransform(pullY, [0, -60], [0, -360]);
-  const pullHeight = useTransform(pullY, (v: number) => Math.abs(v));
 
   useEffect(() => {
     if (!roomId) return;
@@ -60,10 +55,20 @@ const ChatRoom = () => {
 
   const isCreator = roomConfig?.isCreator ?? false;
 
-  // Auto-scroll
+  // Auto-scroll — only when near bottom
+  const prevMsgCountRef = useRef(0);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (messages.length > prevMsgCountRef.current) {
+      const el = scrollContainerRef.current;
+      if (el) {
+        const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+        if (nearBottom) {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages.length]);
 
   // Redirect on chat end
   useEffect(() => {
@@ -100,36 +105,18 @@ const ChatRoom = () => {
     document.querySelectorAll("[data-msg-id]").forEach((el) => {
       observerRef.current?.observe(el);
     });
-  }, [messages]);
+  }, [messages.length]);
 
-  // Pull-to-refresh callbacks
-  const isAtBottom = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return false;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 10;
-  }, []);
-
-  const handlePullEnd = useCallback(async (_: any, info: PanInfo) => {
-    if (info.offset.y < -80 && isAtBottom()) {
-      setIsRefreshing(true);
-      haptic.light();
-      await new Promise((r) => setTimeout(r, 800));
-      setIsRefreshing(false);
-      haptic.light();
-    }
-    pullY.set(0);
-  }, [pullY, isAtBottom]);
-
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!messageInput.trim() && !selectedFile) return;
     haptic.medium();
     await sendMessage(messageInput.trim(), selectedFile || undefined, replyTo || undefined);
     setMessageInput("");
     setSelectedFile(null);
     setReplyTo(null);
-  };
+  }, [messageInput, selectedFile, replyTo, sendMessage]);
 
-  const handleReply = (msg: DecryptedMessage) => {
+  const handleReply = useCallback((msg: DecryptedMessage) => {
     haptic.light();
     setReplyTo({
       messageId: msg.id,
@@ -137,25 +124,32 @@ const ChatRoom = () => {
       preview: msg.text.slice(0, 50),
     });
     inputRef.current?.focus();
-  };
+  }, []);
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = useCallback((value: string) => {
     setMessageInput(value);
     if (value.trim()) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => sendTyping(), 300);
     }
-  };
+  }, [sendTyping]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setSelectedFile(file);
-  };
+  }, []);
 
-  const scrollToMessage = (msgId: string) => {
+  const scrollToMessage = useCallback((msgId: string) => {
     const el = document.querySelector(`[data-msg-id="${msgId}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
+  }, []);
+
+  const clearOverlays = useCallback(() => {
+    setActiveReactionMsg(null);
+    setShowContextMenu(null);
+  }, []);
+
+  const username = roomConfig?.username ?? "";
 
   if (!roomConfig) return null;
 
@@ -185,20 +179,18 @@ const ChatRoom = () => {
         </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <motion.div whileTap={{ scale: 0.9 }}>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`rounded-xl gap-1 text-xs ${
-                  isCreator
-                    ? "text-destructive hover:text-destructive hover:bg-destructive/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                }`}
-              >
-                <LogOut className="w-4 h-4" />
-                {isCreator ? "End" : "Leave"}
-              </Button>
-            </motion.div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-xl gap-1 text-xs ${
+                isCreator
+                  ? "text-destructive hover:text-destructive hover:bg-destructive/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <LogOut className="w-4 h-4" />
+              {isCreator ? "End" : "Leave"}
+            </Button>
           </AlertDialogTrigger>
           <AlertDialogContent className="glass border-border/50 max-w-[320px] rounded-2xl">
             <AlertDialogHeader>
@@ -228,9 +220,7 @@ const ChatRoom = () => {
 
       {/* Pinned message banner */}
       {pinnedMessage && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
+        <div
           className="glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
           onClick={() => scrollToMessage(pinnedMessage.id)}
         >
@@ -239,20 +229,14 @@ const ChatRoom = () => {
             <span className="font-medium text-foreground">{pinnedMessage.username}: </span>
             {pinnedMessage.text}
           </p>
-        </motion.div>
+        </div>
       )}
 
       {/* Messages */}
-      <motion.div
+      <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3"
-        onClick={() => { setActiveReactionMsg(null); setShowContextMenu(null); }}
-        onPan={(_, info) => {
-          if (isAtBottom() && info.delta.y < 0) {
-            pullY.set(Math.max(info.offset.y, -100));
-          }
-        }}
-        onPanEnd={handlePullEnd}
+        className="flex-1 overflow-y-auto p-4 space-y-3 overscroll-contain"
+        onClick={clearOverlays}
       >
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full">
@@ -264,60 +248,44 @@ const ChatRoom = () => {
             </div>
           </div>
         )}
-        <AnimatePresence initial={false}>
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              msg={msg}
-              roomConfig={roomConfig}
-              activeReactionMsg={activeReactionMsg}
-              showContextMenu={showContextMenu}
-              onReaction={(emoji) => addReaction(msg.id, emoji)}
-              onToggleReactionPicker={() => setActiveReactionMsg(activeReactionMsg === msg.id ? null : msg.id)}
-              onContextMenu={() => setShowContextMenu(showContextMenu === msg.id ? null : msg.id)}
-              onPin={() => { togglePin(msg.id); setShowContextMenu(null); }}
-              onDelete={() => { deleteMessage(msg.id); setShowContextMenu(null); }}
-              onMediaView={() => msg.mediaUrl && recordMediaView(msg.mediaUrl)}
-              onlineUserCount={onlineUsers.length}
-              onReply={() => handleReply(msg)}
-              onScrollToMessage={scrollToMessage}
-            />
-          ))}
-        </AnimatePresence>
+
+        {messages.map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            msg={msg}
+            username={username}
+            activeReactionMsg={activeReactionMsg}
+            showContextMenu={showContextMenu}
+            onReaction={addReaction}
+            onSetActiveReaction={setActiveReactionMsg}
+            onSetContextMenu={setShowContextMenu}
+            onPin={togglePin}
+            onDelete={deleteMessage}
+            onMediaView={recordMediaView}
+            onlineUserCount={onlineUsers.length}
+            onReply={handleReply}
+            onScrollToMessage={scrollToMessage}
+          />
+        ))}
 
         {/* Typing indicator */}
         {typingUsers.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2 text-xs text-muted-foreground"
-          >
+          <div className="flex items-center gap-2 text-xs text-muted-foreground animate-fade-in">
             <div className="flex gap-1">
               {[0, 1, 2].map((i) => (
-                <motion.span
+                <span
                   key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50"
-                  animate={{ y: [0, -4, 0] }}
-                  transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.15 }}
+                  className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce"
+                  style={{ animationDelay: `${i * 150}ms` }}
                 />
               ))}
             </div>
             {typingUsers.join(", ")} typing...
-          </motion.div>
+          </div>
         )}
 
         <div ref={messagesEndRef} />
-
-        {/* Pull-up-to-refresh indicator */}
-        <motion.div
-          style={{ opacity: pullOpacity, height: pullHeight }}
-          className="flex items-center justify-center overflow-hidden"
-        >
-          <motion.div style={{ rotate: pullRotate }}>
-            <RefreshCw className={`w-5 h-5 text-primary ${isRefreshing ? "animate-spin" : ""}`} />
-          </motion.div>
-        </motion.div>
-      </motion.div>
+      </div>
 
       {/* File preview */}
       {selectedFile && (
@@ -347,16 +315,14 @@ const ChatRoom = () => {
       {/* Input */}
       <div className="glass border-t border-border/50 p-3">
         <div className="flex gap-2 items-center">
-          <motion.div whileTap={{ scale: 0.85 }}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11 rounded-full text-muted-foreground"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="w-4 h-4" />
-            </Button>
-          </motion.div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 rounded-full text-muted-foreground active:scale-90 transition-transform"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Paperclip className="w-4 h-4" />
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -372,58 +338,63 @@ const ChatRoom = () => {
             placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
             className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
           />
-          <motion.div whileTap={{ scale: 0.85 }}>
-            <Button
-              onClick={handleSend}
-              disabled={!messageInput.trim() && !selectedFile}
-              size="icon"
-              className="h-11 w-11 rounded-full bg-primary text-primary-foreground disabled:opacity-30"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </motion.div>
+          <Button
+            onClick={handleSend}
+            disabled={!messageInput.trim() && !selectedFile}
+            size="icon"
+            className="h-11 w-11 rounded-full bg-primary text-primary-foreground disabled:opacity-30 active:scale-90 transition-transform"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </div>
   );
 };
 
-// Message bubble component
+// ─── Optimized Message Bubble ────────────────────────────────────────────────
+
 interface MessageBubbleProps {
   msg: DecryptedMessage;
-  roomConfig: { username: string };
+  username: string;
   activeReactionMsg: string | null;
   showContextMenu: string | null;
-  onReaction: (emoji: string) => void;
-  onToggleReactionPicker: () => void;
-  onContextMenu: () => void;
-  onPin: () => void;
-  onDelete: () => void;
-  onMediaView: () => void;
+  onReaction: (messageId: string, emoji: string) => void;
+  onSetActiveReaction: (id: string | null) => void;
+  onSetContextMenu: (id: string | null) => void;
+  onPin: (messageId: string) => void;
+  onDelete: (messageId: string) => void;
+  onMediaView: (mediaUrl: string) => void;
   onlineUserCount: number;
-  onReply: () => void;
+  onReply: (msg: DecryptedMessage) => void;
   onScrollToMessage: (msgId: string) => void;
 }
 
-const MessageBubble = ({
-  msg, roomConfig, activeReactionMsg, showContextMenu,
-  onReaction, onToggleReactionPicker, onContextMenu,
+const MessageBubble = memo(({
+  msg, username, activeReactionMsg, showContextMenu,
+  onReaction, onSetActiveReaction, onSetContextMenu,
   onPin, onDelete, onMediaView, onlineUserCount, onReply, onScrollToMessage,
 }: MessageBubbleProps) => {
   const [mediaObjectUrl, setMediaObjectUrl] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [showReadBy, setShowReadBy] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMediaClick = async () => {
+  const isShowingReactions = activeReactionMsg === msg.id;
+  const isShowingContext = showContextMenu === msg.id;
+
+  const handleMediaClick = useCallback(async () => {
     if (!msg.mediaUrl || !msg.mediaType || mediaObjectUrl) return;
     setLoadingMedia(true);
-    onMediaView();
+    onMediaView(msg.mediaUrl);
 
     try {
       const parsed = JSON.parse(msg.mediaUrl);
       const { data } = await supabase.storage.from("encrypted-media").download(parsed.path);
       if (data) {
-        // Get the key from localStorage
         const roomId = new URL(window.location.href).pathname.split("/").pop();
         const stored = localStorage.getItem(`room_${roomId}`);
         if (stored) {
@@ -437,7 +408,7 @@ const MessageBubble = ({
       console.error("Failed to decrypt media:", e);
     }
     setLoadingMedia(false);
-  };
+  }, [msg.mediaUrl, msg.mediaType, mediaObjectUrl, onMediaView]);
 
   useEffect(() => {
     return () => {
@@ -445,52 +416,100 @@ const MessageBubble = ({
     };
   }, [mediaObjectUrl]);
 
-  // Group reactions by emoji
-  const groupedReactions = msg.reactions.reduce((acc, r) => {
-    acc[r.emoji] = acc[r.emoji] || { emoji: r.emoji, count: 0, names: [] };
-    acc[r.emoji].count++;
-    acc[r.emoji].names.push(r.senderName);
-    return acc;
-  }, {} as Record<string, { emoji: string; count: number; names: string[] }>);
+  // Native touch handlers for swipe-to-reply (GPU-accelerated, no framer-motion overhead)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    };
+    swipingRef.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dx = e.touches[0].clientX - touchStartRef.current.x;
+    const dy = e.touches[0].clientY - touchStartRef.current.y;
+
+    // Lock direction after 10px movement
+    if (!swipingRef.current && Math.abs(dx) > 10) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        swipingRef.current = true;
+      } else {
+        touchStartRef.current = null;
+        return;
+      }
+    }
+
+    if (swipingRef.current) {
+      // Clamp: own messages swipe left, others swipe right
+      const maxSwipe = 80;
+      let clamped: number;
+      if (msg.isOwn) {
+        clamped = Math.max(-maxSwipe, Math.min(0, dx));
+      } else {
+        clamped = Math.max(0, Math.min(maxSwipe, dx));
+      }
+      // Apply with requestAnimationFrame for smoothness
+      if (containerRef.current) {
+        containerRef.current.style.transform = `translateX(${clamped}px)`;
+      }
+      setSwipeOffset(clamped);
+    }
+  }, [msg.isOwn]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (swipingRef.current && Math.abs(swipeOffset) > 50) {
+      haptic.light();
+      onReply(msg);
+    }
+    // Animate back with CSS transition
+    if (containerRef.current) {
+      containerRef.current.style.transition = "transform 0.2s ease-out";
+      containerRef.current.style.transform = "translateX(0)";
+      setTimeout(() => {
+        if (containerRef.current) containerRef.current.style.transition = "";
+      }, 200);
+    }
+    setSwipeOffset(0);
+    touchStartRef.current = null;
+    swipingRef.current = false;
+  }, [swipeOffset, msg, onReply]);
+
+  // Group reactions by emoji — memoized
+  const groupedReactions = useMemo(() => {
+    return msg.reactions.reduce((acc, r) => {
+      acc[r.emoji] = acc[r.emoji] || { emoji: r.emoji, count: 0, names: [] as string[] };
+      acc[r.emoji].count++;
+      acc[r.emoji].names.push(r.senderName);
+      return acc;
+    }, {} as Record<string, { emoji: string; count: number; names: string[] }>);
+  }, [msg.reactions]);
 
   const isRead = msg.readBy.length > 0;
   const allRead = msg.readBy.length >= onlineUserCount - 1 && onlineUserCount > 1;
-
-  const swipeX = useMotionValue(0);
-  const replyIconOpacity = useTransform(swipeX, msg.isOwn ? [0, -40] : [0, 40], [0, 1]);
-
-  const handleSwipeEnd = (_: any, info: PanInfo) => {
-    const threshold = 50;
-    const triggered = msg.isOwn ? info.offset.x < -threshold : info.offset.x > threshold;
-    if (triggered) onReply();
-    swipeX.set(0);
-  };
+  const replyIconOpacity = Math.min(1, Math.abs(swipeOffset) / 40);
 
   return (
-    <motion.div
+    <div
       data-msg-id={msg.id}
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className={`flex ${msg.isOwn ? "justify-end" : "justify-start"} relative`}
-      onDoubleClick={(e) => { e.stopPropagation(); onToggleReactionPicker(); }}
+      onDoubleClick={(e) => { e.stopPropagation(); onSetActiveReaction(isShowingReactions ? null : msg.id); }}
     >
       {/* Reply swipe icon */}
-      <motion.div
+      <div
+        className={`absolute top-1/2 -translate-y-1/2 transition-opacity ${msg.isOwn ? "left-0 -ml-8" : "right-0 -mr-8"}`}
         style={{ opacity: replyIconOpacity }}
-        className={`absolute top-1/2 -translate-y-1/2 ${msg.isOwn ? "left-0 -ml-8" : "right-0 -mr-8"}`}
       >
         <Reply className="w-4 h-4 text-muted-foreground" />
-      </motion.div>
+      </div>
 
-      <motion.div
-        className="max-w-[80%] relative"
-        style={{ x: swipeX }}
-        drag="x"
-        dragConstraints={{ left: msg.isOwn ? -80 : 0, right: msg.isOwn ? 0 : 80 }}
-        dragElastic={0.3}
-        onDragEnd={handleSwipeEnd}
+      <div
+        ref={containerRef}
+        className="max-w-[80%] relative will-change-transform"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {!msg.isOwn && (
           <p className="text-xs font-medium mb-1 ml-1" style={{ color: msg.color }}>
@@ -503,7 +522,7 @@ const MessageBubble = ({
               ? "bg-primary text-primary-foreground rounded-br-md"
               : "glass rounded-bl-md text-foreground"
           } ${msg.isPinned ? "ring-1 ring-primary/30" : ""}`}
-          onClick={(e) => { e.stopPropagation(); onContextMenu(); }}
+          onClick={(e) => { e.stopPropagation(); onSetContextMenu(isShowingContext ? null : msg.id); }}
         >
           {msg.isPinned && (
             <Pin className="w-3 h-3 text-primary absolute -top-1 -right-1 rotate-45" />
@@ -558,9 +577,9 @@ const MessageBubble = ({
             {Object.values(groupedReactions).map((r) => (
               <button
                 key={r.emoji}
-                onClick={(e) => { e.stopPropagation(); onReaction(r.emoji); }}
+                onClick={(e) => { e.stopPropagation(); onReaction(msg.id, r.emoji); }}
                 className={`glass rounded-full px-1.5 py-0.5 text-xs flex items-center gap-0.5 ${
-                  r.names.includes(roomConfig.username) ? "ring-1 ring-primary/50" : ""
+                  r.names.includes(username) ? "ring-1 ring-primary/50" : ""
                 }`}
               >
                 {r.emoji} {r.count > 1 && <span className="text-muted-foreground">{r.count}</span>}
@@ -589,86 +608,80 @@ const MessageBubble = ({
         </div>
 
         {/* Read-by names */}
-        <AnimatePresence>
-          {showReadBy && msg.readBy.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mx-1 mt-0.5 overflow-hidden"
-            >
-              <p className="text-[10px] text-muted-foreground/50">
-                Seen by {msg.readBy.join(", ")}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {showReadBy && msg.readBy.length > 0 && (
+          <div className="mx-1 mt-0.5">
+            <p className="text-[10px] text-muted-foreground/50">
+              Seen by {msg.readBy.join(", ")}
+            </p>
+          </div>
+        )}
 
         {/* Reaction picker */}
-        <AnimatePresence>
-          {activeReactionMsg === msg.id && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 10 }}
-              className={`absolute ${msg.isOwn ? "right-0" : "left-0"} -top-10 glass rounded-full px-2 py-1 flex gap-1 z-20`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {QUICK_EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => onReaction(emoji)}
-                  className="text-lg hover:scale-125 transition-transform p-0.5"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isShowingReactions && (
+          <div
+            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} -top-10 glass rounded-full px-2 py-1 flex gap-1 z-20 animate-scale-in`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => onReaction(msg.id, emoji)}
+                className="text-lg active:scale-125 transition-transform p-0.5"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Context menu */}
-        <AnimatePresence>
-          {showContextMenu === msg.id && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className={`absolute ${msg.isOwn ? "right-0" : "left-0"} top-full mt-1 glass rounded-xl py-1 z-10 min-w-[140px]`}
-              onClick={(e) => e.stopPropagation()}
+        {isShowingContext && (
+          <div
+            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} top-full mt-1 glass rounded-xl py-1 z-10 min-w-[140px] animate-scale-in`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { onReply(msg); onSetContextMenu(null); }}
+              className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
             >
+              <Reply className="w-3 h-3" /> Reply
+            </button>
+            <button
+              onClick={() => { onSetActiveReaction(msg.id); onSetContextMenu(null); }}
+              className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+            >
+              <Smile className="w-3 h-3" /> React
+            </button>
+            <button
+              onClick={() => { onPin(msg.id); onSetContextMenu(null); }}
+              className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+            >
+              <Pin className="w-3 h-3" /> {msg.isPinned ? "Unpin" : "Pin"}
+            </button>
+            {msg.isOwn && (
               <button
-                onClick={() => { onReply(); onContextMenu(); }}
-                className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+                onClick={() => { onDelete(msg.id); onSetContextMenu(null); }}
+                className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 flex items-center gap-2"
               >
-                <Reply className="w-3 h-3" /> Reply
+                <X className="w-3 h-3" /> Delete
               </button>
-              <button
-                onClick={() => { onToggleReactionPicker(); onContextMenu(); }}
-                className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
-              >
-                <Smile className="w-3 h-3" /> React
-              </button>
-              <button
-                onClick={onPin}
-                className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
-              >
-                <Pin className="w-3 h-3" /> {msg.isPinned ? "Unpin" : "Pin"}
-              </button>
-              {msg.isOwn && (
-                <button
-                  onClick={onDelete}
-                  className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 flex items-center gap-2"
-                >
-                  <X className="w-3 h-3" /> Delete
-                </button>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </motion.div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
-};
+}, (prev, next) => {
+  // Custom comparison — only re-render when message-relevant props change
+  return (
+    prev.msg === next.msg &&
+    prev.username === next.username &&
+    prev.onlineUserCount === next.onlineUserCount &&
+    (prev.activeReactionMsg === prev.msg.id) === (next.activeReactionMsg === next.msg.id) &&
+    (prev.showContextMenu === prev.msg.id) === (next.showContextMenu === next.msg.id)
+  );
+});
+
+MessageBubble.displayName = "MessageBubble";
 
 export default ChatRoom;
