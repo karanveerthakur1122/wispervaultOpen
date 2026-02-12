@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import GlassCard from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
+import { hashPassword } from "@/lib/crypto";
 import { toast } from "sonner";
 
 const AVATAR_COLORS = [
@@ -53,6 +54,16 @@ const JoinRoom = () => {
         toast.error("Room is full (max 10 users)");
         setJoining(false);
         return;
+      }
+
+      // Verify password
+      if (room.password_hash) {
+        const inputHash = await hashPassword(password);
+        if (inputHash !== room.password_hash) {
+          toast.error("Incorrect password");
+          setJoining(false);
+          return;
+        }
       }
 
       // Check duplicate username

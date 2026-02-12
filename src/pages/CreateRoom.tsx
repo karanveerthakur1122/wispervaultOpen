@@ -5,7 +5,7 @@ import { ArrowLeft, Copy, Check, Key, User } from "lucide-react";
 import GlassCard from "@/components/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { generateRoomId, generatePassword } from "@/lib/crypto";
+import { generateRoomId, generatePassword, hashPassword } from "@/lib/crypto";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -28,10 +28,12 @@ const CreateRoom = () => {
     setCreating(true);
 
     try {
-      // Create room in DB
+      // Create room in DB with password hash
+      const pwHash = await hashPassword(password);
       const { error } = await supabase.from("rooms").insert({
         room_id: roomId,
         user_count: 0,
+        password_hash: pwHash,
       });
 
       if (error) {
