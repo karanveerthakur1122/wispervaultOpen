@@ -93,3 +93,10 @@
     user-drag: none;
   }
 }
+
+/* Block print / screen capture */
+@media print {
+  body {
+    display: none !important;
+  }
+}
