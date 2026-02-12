@@ -219,7 +219,7 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100dvh - var(--keyboard-height, 0px))" }}>
+    <div className="h-[100dvh] flex flex-col">
       {/* Header */}
       <header className="glass border-b border-border/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -498,8 +498,7 @@ const ChatRoom = () => {
             value={messageInput}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            onFocus={() => setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300)}
-            placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
+            onFocus={() => setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 400)}
             className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
           />
           <Button
