@@ -50,6 +50,7 @@ export type Database = {
         Row: {
           created_at: string
           encrypted_blob: string
+          expires_at: string | null
           id: string
           is_deleted: boolean
           is_pinned: boolean
@@ -64,6 +65,7 @@ export type Database = {
         Insert: {
           created_at?: string
           encrypted_blob: string
+          expires_at?: string | null
           id?: string
           is_deleted?: boolean
           is_pinned?: boolean
@@ -78,6 +80,7 @@ export type Database = {
         Update: {
           created_at?: string
           encrypted_blob?: string
+          expires_at?: string | null
           id?: string
           is_deleted?: boolean
           is_pinned?: boolean
@@ -221,6 +224,7 @@ export type Database = {
           created_at: string
           empty_since: string | null
           id: string
+          last_message_at: string | null
           password_hash: string | null
           room_id: string
           user_count: number
@@ -230,6 +234,7 @@ export type Database = {
           created_at?: string
           empty_since?: string | null
           id?: string
+          last_message_at?: string | null
           password_hash?: string | null
           room_id: string
           user_count?: number
@@ -239,6 +244,7 @@ export type Database = {
           created_at?: string
           empty_since?: string | null
           id?: string
+          last_message_at?: string | null
           password_hash?: string | null
           room_id?: string
           user_count?: number
