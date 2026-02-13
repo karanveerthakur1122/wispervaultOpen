@@ -17,17 +17,16 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
-    // Find rooms that have been empty for 10+ minutes
-    const { data: emptyRooms } = await supabase
+    // Find rooms with no message activity for 2+ hours
+    const { data: inactiveRooms } = await supabase
       .from("rooms")
       .select("room_id")
       .eq("active", true)
-      .not("empty_since", "is", null)
-      .lt("empty_since", tenMinutesAgo);
+      .lt("last_message_at", twoHoursAgo);
 
-    if (!emptyRooms || emptyRooms.length === 0) {
+    if (!inactiveRooms || inactiveRooms.length === 0) {
       return new Response(
         JSON.stringify({ success: true, deleted: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -36,10 +35,10 @@ Deno.serve(async (req) => {
 
     let deleted = 0;
 
-    for (const room of emptyRooms) {
+    for (const room of inactiveRooms) {
       const roomId = room.room_id;
 
-      // Double-check: no active presence
+      // Double-check: no active presence (never delete while users are chatting)
       const { count } = await supabase
         .from("presence")
         .select("id", { count: "exact", head: true })
@@ -47,15 +46,10 @@ Deno.serve(async (req) => {
         .eq("is_active", true);
 
       if ((count ?? 0) > 0) {
-        // Someone rejoined — clear empty_since
-        await supabase
-          .from("rooms")
-          .update({ empty_since: null })
-          .eq("room_id", roomId);
         continue;
       }
 
-      // Delete in correct FK order (same as end-chat)
+      // Delete in correct FK order
       await supabase.from("reactions").delete().eq("room_id", roomId);
       await supabase.from("read_receipts").delete().eq("room_id", roomId);
       await supabase.from("media_views").delete().eq("room_id", roomId);
@@ -73,7 +67,7 @@ Deno.serve(async (req) => {
       await supabase.from("presence").delete().eq("room_id", roomId);
       await supabase.from("rooms").delete().eq("room_id", roomId);
 
-      console.log(`Auto-deleted empty room: ${roomId}`);
+      console.log(`Auto-deleted inactive room: ${roomId}`);
       deleted++;
     }
 

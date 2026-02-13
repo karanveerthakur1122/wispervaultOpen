@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.cleanup-empty-rooms]
 verify_jwt = false
+
+[functions.cleanup-expired-messages]
+verify_jwt = false

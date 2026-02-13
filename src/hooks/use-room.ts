@@ -252,7 +252,11 @@ export function useRoom(config: RoomConfig | null) {
         );
         if (!cancelled) {
           const msgs = decrypted.filter(Boolean) as DecryptedMessage[];
-          setMessages(msgs);
+          // Guard: never overwrite existing state with empty fetch (race condition)
+          setMessages((prev) => {
+            if (msgs.length === 0 && prev.length > 0) return prev;
+            return msgs;
+          });
           setPinnedMessage(msgs.find((m) => m.isPinned) || null);
         }
       }
@@ -571,6 +575,8 @@ export function useRoom(config: RoomConfig | null) {
       media_url: mediaUrl,
       media_type: mediaType,
     });
+    // Update room's last_message_at
+    await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
     onProgress?.("done", 100);
   }, [config]);
 
@@ -633,8 +639,12 @@ export function useRoom(config: RoomConfig | null) {
   }, [config]);
 
   const deleteMessage = useCallback(async (messageId: string) => {
+    if (!config) return;
+    // Verify ownership before deleting
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg || !msg.isOwn) return;
     await supabase.from("messages").delete().eq("id", messageId);
-  }, []);
+  }, [config, messages]);
 
   const editMessage = useCallback(async (messageId: string, newText: string) => {
     if (!config || !keyRef.current) return;
@@ -651,6 +661,8 @@ export function useRoom(config: RoomConfig | null) {
       encrypted_blob: encrypted,
       iv,
     }).eq("id", messageId);
+    // Update room's last_message_at on edit
+    await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
   }, [config, messages]);
 
   const addReaction = useCallback(async (messageId: string, emoji: string) => {

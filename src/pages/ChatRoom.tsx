@@ -1009,7 +1009,7 @@ const MessageBubble = memo(({
         {/* Reaction picker */}
         {isShowingReactions && (
           <div
-            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} -top-10 glass rounded-full px-2 py-1 flex gap-1 z-20 animate-scale-in`}
+            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} -top-10 glass rounded-full px-2 py-1 flex gap-1 z-50 animate-scale-in`}
             onClick={(e) => e.stopPropagation()}
           >
             {QUICK_EMOJIS.map((emoji) => (
@@ -1027,7 +1027,7 @@ const MessageBubble = memo(({
         {/* Context menu */}
         {isShowingContext && (
           <div
-            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} top-full mt-1 glass rounded-xl py-1 z-10 min-w-[140px] animate-scale-in`}
+            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} top-full mt-1 glass rounded-xl py-1 z-50 min-w-[140px] animate-scale-in`}
             onClick={(e) => e.stopPropagation()}
           >
             <button
