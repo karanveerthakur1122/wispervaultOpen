@@ -1,101 +1,101 @@
 
 
-# Encrypted Ephemeral Realtime Messaging PWA — MVP Plan
+# Fix and Stability Update Plan
 
 ## Overview
-A mobile-only PWA for anonymous, end-to-end encrypted ephemeral messaging. Messages are encrypted client-side using AES-256-GCM, and the server only ever sees encrypted blobs. When a chat ends, everything is permanently deleted.
+This plan addresses random message disappearance, implements proper message/room lifecycle rules, fixes z-index issues with context menus, and stabilizes realtime subscriptions.
 
-Built with React + Vite + Tailwind + Framer Motion on Lovable Cloud (Supabase).
+## Changes
 
----
+### 1. Database Schema Updates
 
-## Phase 1: Foundation & UI Shell
+**`rooms` table** -- Add `last_message_at` column:
+- `last_message_at TIMESTAMPTZ DEFAULT now()` -- tracks when the last message was sent
+- Updated whenever a message is sent or edited
 
-### Mobile-Only Enforcement
-- Full-screen block page for screens wider than 768px or desktop user agents
-- No override possible
+**`messages` table** -- Add `expires_at` column:
+- `expires_at TIMESTAMPTZ` -- computed as `created_at + 2 hours`
+- Default value: `now() + interval '2 hours'`
+- Used by the cron cleanup to delete expired messages individually
 
-### Dark Liquid Glass UI
-- Dark-only theme with frosted glass panels, backdrop blur, soft glow accents
-- iOS-inspired rounded components and spring animations via Framer Motion
-- Pages: Home/Join, Create Room, Chat Room
+### 2. New Edge Function: `cleanup-expired-messages`
 
-### PWA Setup
-- Service worker, manifest, installable prompt
-- Disable text selection, context menu, drag, long press via CSS/JS
+Runs every 1 minute (via pg_cron). Handles two jobs:
+- **Expired messages**: Deletes individual messages where `expires_at < now()`. Also deletes associated reactions, read_receipts, and storage media for those messages.
+- **Inactive rooms**: Deletes rooms where `last_message_at < now() - interval '2 hours'` AND no active presence exists. Deletes all related data (messages, reactions, read_receipts, media_views, presence, storage files).
 
----
+### 3. Update `cleanup-empty-rooms` Edge Function
 
-## Phase 2: Encryption Engine (Client-Side Only)
+Replace current "empty for 10 minutes" logic with the new "no message activity for 2 hours" logic. The function will:
+- Check `last_message_at` instead of `empty_since`
+- Only delete rooms where `now() - last_message_at > 2 hours`
+- Double-check active presence before deletion (never delete while users are chatting)
 
-### Crypto Module
-- AES-256-GCM encryption/decryption using Web Crypto API
-- PBKDF2 key derivation (100k iterations, SHA-256) from room password + roomID salt
-- Random 96-bit IV per message
-- Room key stored only in localStorage, never sent to server
+### 4. Update `use-room.ts` -- Message State Stability
 
-### Room Key Sharing
-- Manual password entry on join
-- URL fragment method (`/room/roomId#key=ROOM_KEY`) — fragment never hits the server
+**Fix random disappearance bugs:**
+- In the initial message fetch, never overwrite state if the fetch returns empty AND messages already exist locally (guard against race conditions)
+- In realtime INSERT handler, use a merge strategy: `setMessages(prev => prev.some(m => m.id === newId) ? prev : [...prev, newMsg])`  (already done, but verify)
+- In realtime UPDATE handler for `is_deleted`, only remove from state -- never replace the entire array
+- In realtime DELETE handler, filter by ID only -- never reset state
 
----
+**Update `sendMessage`** to also update `rooms.last_message_at`:
+- After inserting a message, update the room's `last_message_at` to `now()`
 
-## Phase 3: Database & Room Management
+**Fix `deleteMessage`** to verify ownership:
+- Before deleting, check that the message's `sender_name === config.username`
+- Only delete if ownership is confirmed
 
-### Supabase Tables
-- **rooms**: id, room_id, created_at, active, user_count
-- **messages**: id, room_id, encrypted_blob, iv, created_at, is_deleted, version, is_pinned
-- **presence**: id, room_id, username, avatar_color, is_active, last_seen
+**Fix `editMessage`:**
+- Already checks `msg.isOwn` -- no change needed
+- After editing, also update `rooms.last_message_at`
 
-### Room Creation & Joining
-- Create room → generate room ID, derive key from password
-- Join room → enter room ID + password (or use link with fragment key)
-- Max 10 users enforced server-side
-- Duplicate username blocked via presence check
+### 5. Update `end-chat` Edge Function
 
----
+No major changes needed -- already correctly deletes everything immediately. Will add broadcast cleanup confirmation.
 
-## Phase 4: Realtime Messaging
+### 6. Fix Z-Index Issues in ChatRoom.tsx
 
-### Supabase Realtime Channels
-- Channel per room (`room:ROOM_ID`)
-- Events: message:new, message:edit, message:delete, presence:join/leave/typing, chat:end
+**Context menu** (currently `z-10`): Change to `z-50` to ensure it renders above message bubbles.
 
-### Message Flow
-- Compose → encrypt client-side → store encrypted blob in Supabase → broadcast via realtime
-- Receive → get encrypted blob → decrypt client-side → render
-- Edit within 5 minutes: re-encrypt, increment version
-- Delete for everyone: remove blob from DB, broadcast delete
-- Delete for me: hide locally only
+**Reaction picker** (currently `z-20`): Change to `z-50`.
 
-### Presence & Typing
-- Track active users with Supabase Realtime presence
-- Typing indicator broadcast (stops when input cleared)
-- Visibility API: mark inactive when app hidden, restore when visible
+**Message container**: Ensure no parent has `overflow: hidden` that clips the popups. The scroll container already uses `overflow-y-auto` which is fine for vertical scroll but can clip horizontal popups -- add `overflow-x: visible` where needed, or use a portal approach for menus.
 
----
+### 7. Set Up pg_cron Schedule
 
-## Phase 5: Chat End & Permanent Deletion
+Run SQL (via insert tool, not migration) to schedule the cleanup function every minute:
+```text
+cron.schedule('cleanup-expired-messages', '* * * * *', ...)
+```
 
-### End Chat Flow
-- Any user can press "End Chat"
-- Broadcasts `chat:end` to all participants
-- Edge function deletes all messages, presence records, and the room entry
-- All clients clear localStorage keys and redirect to home
-- Completely unrecoverable
+And schedule room cleanup every 5 minutes:
+```text
+cron.schedule('cleanup-inactive-rooms', '*/5 * * * *', ...)
+```
 
 ---
 
-## Phase 6 (Post-MVP): Advanced Features
+## Technical Details
 
-These will be added after the core is working:
+### File Changes Summary
 
-- **Encrypted media**: Client-side encryption of images/files, upload to private Supabase storage bucket, 2-hour auto-delete after first view via edge function
-- **Read receipts**: Intersection Observer for viewport detection, grey/blue double ticks
-- **Reactions**: Encrypted emoji reactions with realtime sync
-- **Pin messages**: One pinned message at a time, scroll-to-original on tap
-- **PWA security hardening**: Blur on app switch, devtools detection, suspicious resize notification
-- **Haptic feedback** on send (where supported)
-- **Virtualized message list** for performance
-- **Pull-to-refresh** gesture
+| File | Action |
+|------|--------|
+| Migration SQL | Add `last_message_at` to rooms, `expires_at` to messages |
+| `supabase/functions/cleanup-expired-messages/index.ts` | New -- deletes expired messages every minute |
+| `supabase/functions/cleanup-empty-rooms/index.ts` | Update -- use `last_message_at` logic instead of `empty_since` |
+| `supabase/config.toml` | Add `cleanup-expired-messages` function config |
+| `src/hooks/use-room.ts` | Fix state management, add ownership checks, update `last_message_at` on send/edit |
+| `src/pages/ChatRoom.tsx` | Fix z-index on context menu and reaction picker |
+| pg_cron SQL (insert tool) | Schedule both cleanup functions |
+
+### Edge Cases Handled
+
+- **User refresh mid-delete**: Messages are deleted server-side; client reloads from DB
+- **Two users delete same message**: Idempotent DELETE operations; realtime broadcasts removal to all
+- **Message expires while viewing**: Realtime DELETE event removes it from UI gracefully
+- **Room deletion during typing**: `chat:end` broadcast forces redirect
+- **Slow network reconnection**: Merge strategy prevents empty fetch from wiping state
+- **Multiple rapid edits**: Each edit re-encrypts and updates; last write wins with version increment
 
