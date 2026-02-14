@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -699,6 +700,7 @@ const MessageBubble = memo(({
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef(false);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
 
   const isShowingReactions = activeReactionMsg === msg.id;
   const isShowingContext = showContextMenu === msg.id;
@@ -750,11 +752,14 @@ const MessageBubble = memo(({
     };
     swipingRef.current = false;
     longPressFiredRef.current = false;
+    if (containerRef.current) containerRef.current.style.willChange = 'transform';
 
     // Start long-press timer (500ms)
     longPressTimerRef.current = setTimeout(() => {
       longPressFiredRef.current = true;
       haptic.medium();
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) setMenuPos({ x: msg.isOwn ? rect.right : rect.left, y: rect.top });
       onSetActiveReaction(isShowingReactions ? null : msg.id);
     }, 500);
   }, [msg.id, isShowingReactions, onSetActiveReaction]);
@@ -823,7 +828,10 @@ const MessageBubble = memo(({
       containerRef.current.style.transition = "transform 0.2s ease-out";
       containerRef.current.style.transform = "translateX(0)";
       setTimeout(() => {
-        if (containerRef.current) containerRef.current.style.transition = "";
+        if (containerRef.current) {
+          containerRef.current.style.transition = "";
+          containerRef.current.style.willChange = "";
+        }
       }, 200);
     }
     setSwipeOffset(0);
@@ -861,7 +869,7 @@ const MessageBubble = memo(({
 
       <div
         ref={containerRef}
-        className="max-w-[80%] relative will-change-transform"
+        className="max-w-[80%] relative"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -877,7 +885,15 @@ const MessageBubble = memo(({
               ? "bg-primary text-primary-foreground rounded-br-md"
               : "glass rounded-bl-md text-foreground"
           } ${msg.isPinned ? "ring-1 ring-primary/30" : ""}`}
-          onClick={(e) => { e.stopPropagation(); onSetContextMenu(isShowingContext ? null : msg.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isShowingContext) {
+              onSetContextMenu(null);
+            } else {
+              setMenuPos({ x: e.clientX, y: e.clientY });
+              onSetContextMenu(msg.id);
+            }
+          }}
         >
           {msg.isPinned && (
             <Pin className="w-3 h-3 text-primary absolute -top-1 -right-1 rotate-45" />
@@ -1006,65 +1022,86 @@ const MessageBubble = memo(({
           </div>
         )}
 
-        {/* Reaction picker */}
-        {isShowingReactions && (
-          <div
-            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} -top-10 glass rounded-full px-2 py-1 flex gap-1 z-50 animate-scale-in`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {QUICK_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => onReaction(msg.id, emoji)}
-                className="text-lg active:scale-125 transition-transform p-0.5"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
+        {/* Reaction picker — rendered via portal to avoid stacking context clipping */}
+        {isShowingReactions && menuPos && createPortal(
+          <div className="fixed inset-0 z-[99998]" onClick={() => onSetActiveReaction(null)}>
+            <div
+              style={{
+                position: 'fixed',
+                top: Math.max(8, menuPos.y - 48),
+                ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }),
+                zIndex: 99999,
+              }}
+              className="glass rounded-full px-2 py-1 flex gap-1 animate-scale-in backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {QUICK_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => { onReaction(msg.id, emoji); onSetActiveReaction(null); }}
+                  className="text-lg active:scale-125 transition-transform p-0.5"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.getElementById('portal-root')!
         )}
 
-        {/* Context menu */}
-        {isShowingContext && (
-          <div
-            className={`absolute ${msg.isOwn ? "right-0" : "left-0"} top-full mt-1 glass rounded-xl py-1 z-50 min-w-[140px] animate-scale-in`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => { onReply(msg); onSetContextMenu(null); }}
-              className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+        {/* Context menu — rendered via portal to avoid z-index/stacking issues */}
+        {isShowingContext && menuPos && createPortal(
+          <div className="fixed inset-0 z-[99998]" onClick={() => onSetContextMenu(null)}>
+            <div
+              style={{
+                position: 'fixed',
+                top: menuPos.y,
+                ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }),
+                zIndex: 99999,
+              }}
+              className="glass rounded-xl py-1 min-w-[140px] animate-scale-in backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              <Reply className="w-3 h-3" /> Reply
-            </button>
-            <button
-              onClick={() => { onSetActiveReaction(msg.id); onSetContextMenu(null); }}
-              className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
-            >
-              <Smile className="w-3 h-3" /> React
-            </button>
-            <button
-              onClick={() => { onPin(msg.id); onSetContextMenu(null); }}
-              className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
-            >
-              <Pin className="w-3 h-3" /> {msg.isPinned ? "Unpin" : "Pin"}
-            </button>
-            {msg.isOwn && !msg.mediaUrl && msg.text !== "(media)" && (
               <button
-                onClick={() => { setEditText(msg.text); setIsEditing(true); onSetContextMenu(null); setTimeout(() => editInputRef.current?.focus(), 50); }}
+                onClick={() => { onReply(msg); onSetContextMenu(null); }}
                 className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
               >
-                <Pencil className="w-3 h-3" /> Edit
+                <Reply className="w-3 h-3" /> Reply
               </button>
-            )}
-            {msg.isOwn && (
               <button
-                onClick={() => { onDelete(msg.id); onSetContextMenu(null); }}
-                className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 flex items-center gap-2"
+                onClick={() => {
+                  onSetActiveReaction(msg.id);
+                  onSetContextMenu(null);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
               >
-                <X className="w-3 h-3" /> Delete
+                <Smile className="w-3 h-3" /> React
               </button>
-            )}
-          </div>
+              <button
+                onClick={() => { onPin(msg.id); onSetContextMenu(null); }}
+                className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+              >
+                <Pin className="w-3 h-3" /> {msg.isPinned ? "Unpin" : "Pin"}
+              </button>
+              {msg.isOwn && !msg.mediaUrl && msg.text !== "(media)" && (
+                <button
+                  onClick={() => { setEditText(msg.text); setIsEditing(true); onSetContextMenu(null); setTimeout(() => editInputRef.current?.focus(), 50); }}
+                  className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"
+                >
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
+              )}
+              {msg.isOwn && (
+                <button
+                  onClick={() => { onDelete(msg.id); onSetContextMenu(null); }}
+                  className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 flex items-center gap-2"
+                >
+                  <X className="w-3 h-3" /> Delete
+                </button>
+              )}
+            </div>
+          </div>,
+          document.getElementById('portal-root')!
         )}
       </div>
     </div>
