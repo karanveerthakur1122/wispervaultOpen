@@ -18,8 +18,20 @@ Deno.serve(async (req) => {
     );
 
     const now = new Date().toISOString();
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     let deletedMessages = 0;
     let deletedRooms = 0;
+
+    // ── 0. Prune stale presence records globally ──
+    const { data: pruned } = await supabase
+      .from("presence")
+      .delete()
+      .lt("last_seen", fiveMinutesAgo)
+      .select("id");
+    
+    if (pruned && pruned.length > 0) {
+      console.log(`Pruned ${pruned.length} stale presence records`);
+    }
 
     // ── 1. Delete expired messages (expires_at < now) ──
     const { data: expiredMessages } = await supabase
@@ -64,10 +76,12 @@ Deno.serve(async (req) => {
       .lt("last_message_at", twoHoursAgo);
 
     if (inactiveRooms && inactiveRooms.length > 0) {
+      console.log(`Found ${inactiveRooms.length} inactive rooms to check`);
+      
       for (const room of inactiveRooms) {
         const roomId = room.room_id;
 
-        // Double-check: no active presence
+        // Double-check: no active presence (stale ones already pruned above)
         const { count } = await supabase
           .from("presence")
           .select("id", { count: "exact", head: true })
@@ -75,7 +89,7 @@ Deno.serve(async (req) => {
           .eq("is_active", true);
 
         if ((count ?? 0) > 0) {
-          // Users still chatting — skip
+          console.log(`Skipping room ${roomId}: ${count} active users`);
           continue;
         }
 
@@ -103,7 +117,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, deletedMessages, deletedRooms }),
+      JSON.stringify({ success: true, deletedMessages, deletedRooms, prunedPresence: pruned?.length ?? 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

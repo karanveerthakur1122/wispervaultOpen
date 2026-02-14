@@ -646,14 +646,32 @@ export function useRoom(config: RoomConfig | null) {
     if (!config) return;
     // Verify ownership using ref (avoids stale closure)
     const msg = messagesRef.current.find((m) => m.id === messageId);
-    if (!msg || msg.username !== config.username) return;
-    await supabase.from("messages").delete().eq("id", messageId);
+    if (!msg || msg.username !== config.username) {
+      console.warn("Delete blocked: not owner or message not found", { messageId, msgUsername: msg?.username, configUsername: config.username });
+      return;
+    }
+    // Optimistically remove from local state immediately
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    setPinnedMessage((p) => (p?.id === messageId ? null : p));
+    
+    const { error } = await supabase.from("messages").delete().eq("id", messageId);
+    if (error) {
+      console.error("Failed to delete message:", error);
+      // Rollback: re-add the message
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === messageId)) return prev;
+        return [...prev, msg].sort((a, b) => a.timestamp - b.timestamp);
+      });
+    }
   }, [config]);
 
   const editMessage = useCallback(async (messageId: string, newText: string) => {
     if (!config || !keyRef.current) return;
     const msg = messagesRef.current.find((m) => m.id === messageId);
-    if (!msg || msg.username !== config.username) return;
+    if (!msg || msg.username !== config.username) {
+      console.warn("Edit blocked: not owner or message not found", { messageId, msgUsername: msg?.username, configUsername: config.username });
+      return;
+    }
 
     // Preserve reply prefix if original had one
     const fullText = msg.replyTo
@@ -661,10 +679,24 @@ export function useRoom(config: RoomConfig | null) {
       : newText;
 
     const { encrypted, iv } = await encryptMessage(fullText, keyRef.current);
-    await supabase.from("messages").update({
+    
+    // Optimistically update local state
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, text: newText } : m))
+    );
+    
+    const { error } = await supabase.from("messages").update({
       encrypted_blob: encrypted,
       iv,
     }).eq("id", messageId);
+    if (error) {
+      console.error("Failed to edit message:", error);
+      // Rollback
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, text: msg.text } : m))
+      );
+      return;
+    }
     // Update room's last_message_at on edit
     await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
   }, [config]);
