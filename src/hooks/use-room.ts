@@ -86,6 +86,7 @@ export function useRoom(config: RoomConfig | null) {
   const keyRef = useRef<CryptoKey | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
+  const messagesRef = useRef<DecryptedMessage[]>([]);
 
   // Register service worker + request notification permission
   useEffect(() => {
@@ -119,6 +120,9 @@ export function useRoom(config: RoomConfig | null) {
       keyRef.current = key;
     });
   }, [config?.password, config?.roomId]);
+
+  // Keep messagesRef in sync for stable callbacks (avoid stale closures)
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Helper to load reactions for messages
   const loadReactions = useCallback(async (messageIds: string[]): Promise<Record<string, Reaction[]>> => {
@@ -351,7 +355,7 @@ export function useRoom(config: RoomConfig | null) {
                 });
               }
               if (msg.is_pinned) {
-                const existing = messages.find((m) => m.id === msg.id);
+                const existing = messagesRef.current.find((m) => m.id === msg.id);
                 if (existing) setPinnedMessage({ ...existing, text, isPinned: true });
               } else {
                 setPinnedMessage((p) => (p?.id === msg.id ? null : p));
@@ -640,16 +644,16 @@ export function useRoom(config: RoomConfig | null) {
 
   const deleteMessage = useCallback(async (messageId: string) => {
     if (!config) return;
-    // Verify ownership before deleting
-    const msg = messages.find((m) => m.id === messageId);
-    if (!msg || !msg.isOwn) return;
+    // Verify ownership using ref (avoids stale closure)
+    const msg = messagesRef.current.find((m) => m.id === messageId);
+    if (!msg || msg.username !== config.username) return;
     await supabase.from("messages").delete().eq("id", messageId);
-  }, [config, messages]);
+  }, [config]);
 
   const editMessage = useCallback(async (messageId: string, newText: string) => {
     if (!config || !keyRef.current) return;
-    const msg = messages.find((m) => m.id === messageId);
-    if (!msg || !msg.isOwn) return;
+    const msg = messagesRef.current.find((m) => m.id === messageId);
+    if (!msg || msg.username !== config.username) return;
 
     // Preserve reply prefix if original had one
     const fullText = msg.replyTo
@@ -663,12 +667,11 @@ export function useRoom(config: RoomConfig | null) {
     }).eq("id", messageId);
     // Update room's last_message_at on edit
     await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
-  }, [config, messages]);
+  }, [config]);
 
   const addReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!config) return;
-    // Toggle: if already reacted with same emoji, remove
-    const existing = messages.find((m) => m.id === messageId);
+    const existing = messagesRef.current.find((m) => m.id === messageId);
     const existingReaction = existing?.reactions.find(
       (r) => r.emoji === emoji && r.senderName === config.username
     );
@@ -682,36 +685,36 @@ export function useRoom(config: RoomConfig | null) {
         sender_name: config.username,
       });
     }
-  }, [config, messages]);
+  }, [config]);
 
   const togglePin = useCallback(async (messageId: string) => {
     if (!config) return;
-    const msg = messages.find((m) => m.id === messageId);
+    const msg = messagesRef.current.find((m) => m.id === messageId);
     if (!msg) return;
 
     if (msg.isPinned) {
-      // Unpin
       await supabase.from("messages").update({ is_pinned: false }).eq("id", messageId);
     } else {
       // Unpin existing pinned message first
-      if (pinnedMessage) {
-        await supabase.from("messages").update({ is_pinned: false }).eq("id", pinnedMessage.id);
+      const currentPinned = messagesRef.current.find((m) => m.isPinned);
+      if (currentPinned) {
+        await supabase.from("messages").update({ is_pinned: false }).eq("id", currentPinned.id);
       }
       await supabase.from("messages").update({ is_pinned: true }).eq("id", messageId);
     }
-  }, [config, messages, pinnedMessage]);
+  }, [config]);
 
   const markAsRead = useCallback(async (messageId: string) => {
     if (!config) return;
-    const msg = messages.find((m) => m.id === messageId);
+    const msg = messagesRef.current.find((m) => m.id === messageId);
     if (!msg || msg.isOwn || msg.readBy.includes(config.username)) return;
     
     await supabase.from("read_receipts").insert({
       message_id: messageId,
       room_id: config.roomId,
       reader_name: config.username,
-    }).select().maybeSingle(); // ignore duplicate errors
-  }, [config, messages]);
+    }).select().maybeSingle();
+  }, [config]);
 
   const recordMediaView = useCallback(async (mediaUrl: string) => {
     if (!config) return;
