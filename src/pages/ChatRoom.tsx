@@ -103,28 +103,32 @@ const ChatRoom = () => {
     prevMsgCountRef.current = messages.length;
   }, [messages.length]);
 
-  // Handle virtual keyboard / viewport resize — keep input visible
+  // Dynamic viewport height for mobile keyboard stability
   useEffect(() => {
-    if (!("visualViewport" in window) || !window.visualViewport) return;
-
-    const vv = window.visualViewport;
-    const onResize = () => {
-      // Difference between layout viewport and visual viewport = keyboard height
-      const keyboardHeight = window.innerHeight - vv.height;
-      const root = document.documentElement;
-      if (keyboardHeight > 50) {
-        root.style.setProperty("--keyboard-height", `${keyboardHeight}px`);
-      } else {
-        root.style.setProperty("--keyboard-height", "0px");
-      }
-      // Scroll to bottom when keyboard opens
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+    const setVh = () => {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     };
+    setVh();
+    window.addEventListener('resize', setVh);
 
-    vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
+    // Also use visualViewport for more accurate keyboard detection
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      const onVVResize = () => {
+        document.documentElement.style.setProperty('--vh', `${vv.height * 0.01}px`);
+        // Scroll to bottom when keyboard opens
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      };
+      vv.addEventListener("resize", onVVResize);
+      return () => {
+        window.removeEventListener('resize', setVh);
+        vv.removeEventListener("resize", onVVResize);
+      };
+    }
+
+    return () => window.removeEventListener('resize', setVh);
   }, []);
 
   // Redirect on chat end
@@ -236,6 +240,10 @@ const ChatRoom = () => {
       setSendingText(null);
       setSendingFilePreview(null);
       setSendProgress(null);
+      // Re-focus input to keep keyboard open after send
+      requestAnimationFrame(() => {
+        inputRef.current?.focus({ preventScroll: true });
+      });
     }
   }, [messageInput, selectedFile, replyTo, sendMessage, isSending, filePreviewUrl]);
 
@@ -286,7 +294,7 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="h-[100dvh] flex flex-col relative">
+    <div className="relative" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
       {/* Screenshot black screen overlay */}
       {screenBlocked && (
         <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
@@ -297,8 +305,8 @@ const ChatRoom = () => {
           </div>
         </div>
       )}
-      {/* Header */}
-      <header className="glass border-b border-border/50 px-4 py-3 flex items-center justify-between">
+      {/* Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 z-[1000] glass border-b border-border/50 px-4 py-3 flex items-center justify-between" style={{ backdropFilter: 'blur(20px)' }}>
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">
             {onlineUsers.slice(0, 5).map((u) => (
@@ -360,10 +368,11 @@ const ChatRoom = () => {
         </AlertDialog>
       </header>
 
-      {/* Pinned message banner */}
+      {/* Pinned message banner — fixed below header */}
       {pinnedMessage && (
         <div
-          className="glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
+          className="fixed left-0 right-0 z-[999] glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
+          style={{ top: '60px', backdropFilter: 'blur(20px)' }}
           onClick={() => scrollToMessage(pinnedMessage.id)}
         >
           <Pin className="w-3 h-3 text-primary rotate-45" />
@@ -374,10 +383,11 @@ const ChatRoom = () => {
         </div>
       )}
 
-      {/* Messages */}
+      {/* Scrollable Messages Area — fixed between header and input */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 overscroll-contain"
+        className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden p-4 space-y-3 overscroll-contain"
+        style={{ top: pinnedMessage ? '92px' : '60px', bottom: '70px' }}
         onClick={clearOverlays}
       >
         {messages.length === 0 && (
@@ -504,6 +514,8 @@ const ChatRoom = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Fixed bottom area: file preview + reply + input */}
+      <div className="fixed left-0 right-0 bottom-0 z-[1000]">
       {/* File preview with thumbnail */}
       {selectedFile && (
         <div className="glass border-t border-border/50 px-4 py-2">
@@ -611,6 +623,8 @@ const ChatRoom = () => {
             />
             {messageInput.trim() || selectedFile ? (
               <Button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={handleSend}
                 disabled={isSending}
                 size="icon"
@@ -636,6 +650,7 @@ const ChatRoom = () => {
           </div>
         )}
       </div>
+      </div>{/* end fixed bottom area */}
 
       {/* Image Lightbox */}
       {lightboxUrl && (
