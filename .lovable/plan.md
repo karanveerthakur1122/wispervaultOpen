@@ -1,101 +1,56 @@
 
 
-# Fix and Stability Update Plan
+# Fix: Header Must Not Move When Keyboard Opens
 
-## Overview
-This plan addresses random message disappearance, implements proper message/room lifecycle rules, fixes z-index issues with context menus, and stabilizes realtime subscriptions.
+## Problem
+When the mobile keyboard opens, the entire page scrolls — header shifts up, layout jumps. This happens because:
+- The outer container uses `position: relative` instead of `position: fixed`
+- `html` and `body` are not locked from scrolling (`overflow: hidden` is missing)
+- The browser treats the whole document as scrollable, so opening the keyboard pushes everything up
 
 ## Changes
 
-### 1. Database Schema Updates
+### 1. Lock Body Scroll in Global CSS (`src/index.css`)
 
-**`rooms` table** -- Add `last_message_at` column:
-- `last_message_at TIMESTAMPTZ DEFAULT now()` -- tracks when the last message was sent
-- Updated whenever a message is sent or edited
+Add `overflow: hidden` and `height: 100%` to `html, body` so the document itself can never scroll:
 
-**`messages` table** -- Add `expires_at` column:
-- `expires_at TIMESTAMPTZ` -- computed as `created_at + 2 hours`
-- Default value: `now() + interval '2 hours'`
-- Used by the cron cleanup to delete expired messages individually
-
-### 2. New Edge Function: `cleanup-expired-messages`
-
-Runs every 1 minute (via pg_cron). Handles two jobs:
-- **Expired messages**: Deletes individual messages where `expires_at < now()`. Also deletes associated reactions, read_receipts, and storage media for those messages.
-- **Inactive rooms**: Deletes rooms where `last_message_at < now() - interval '2 hours'` AND no active presence exists. Deletes all related data (messages, reactions, read_receipts, media_views, presence, storage files).
-
-### 3. Update `cleanup-empty-rooms` Edge Function
-
-Replace current "empty for 10 minutes" logic with the new "no message activity for 2 hours" logic. The function will:
-- Check `last_message_at` instead of `empty_since`
-- Only delete rooms where `now() - last_message_at > 2 hours`
-- Double-check active presence before deletion (never delete while users are chatting)
-
-### 4. Update `use-room.ts` -- Message State Stability
-
-**Fix random disappearance bugs:**
-- In the initial message fetch, never overwrite state if the fetch returns empty AND messages already exist locally (guard against race conditions)
-- In realtime INSERT handler, use a merge strategy: `setMessages(prev => prev.some(m => m.id === newId) ? prev : [...prev, newMsg])`  (already done, but verify)
-- In realtime UPDATE handler for `is_deleted`, only remove from state -- never replace the entire array
-- In realtime DELETE handler, filter by ID only -- never reset state
-
-**Update `sendMessage`** to also update `rooms.last_message_at`:
-- After inserting a message, update the room's `last_message_at` to `now()`
-
-**Fix `deleteMessage`** to verify ownership:
-- Before deleting, check that the message's `sender_name === config.username`
-- Only delete if ownership is confirmed
-
-**Fix `editMessage`:**
-- Already checks `msg.isOwn` -- no change needed
-- After editing, also update `rooms.last_message_at`
-
-### 5. Update `end-chat` Edge Function
-
-No major changes needed -- already correctly deletes everything immediately. Will add broadcast cleanup confirmation.
-
-### 6. Fix Z-Index Issues in ChatRoom.tsx
-
-**Context menu** (currently `z-10`): Change to `z-50` to ensure it renders above message bubbles.
-
-**Reaction picker** (currently `z-20`): Change to `z-50`.
-
-**Message container**: Ensure no parent has `overflow: hidden` that clips the popups. The scroll container already uses `overflow-y-auto` which is fine for vertical scroll but can clip horizontal popups -- add `overflow-x: visible` where needed, or use a portal approach for menus.
-
-### 7. Set Up pg_cron Schedule
-
-Run SQL (via insert tool, not migration) to schedule the cleanup function every minute:
-```text
-cron.schedule('cleanup-expired-messages', '* * * * *', ...)
+```css
+html, body {
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
 ```
 
-And schedule room cleanup every 5 minutes:
-```text
-cron.schedule('cleanup-inactive-rooms', '*/5 * * * *', ...)
+This is the single most important fix — it prevents the browser from scrolling the document when the keyboard opens.
+
+### 2. Fix App Container in ChatRoom (`src/pages/ChatRoom.tsx`)
+
+Change the outer wrapper from:
+```
+<div className="relative" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
+```
+To:
+```
+<div className="fixed inset-0">
 ```
 
----
+Using `position: fixed; inset: 0` makes the container completely independent of viewport resizing. The `--vh` variable is no longer needed for this container.
 
-## Technical Details
+### 3. Add `-webkit-overflow-scrolling: touch` to Chat Body
 
-### File Changes Summary
+The scrollable message area already uses `position: fixed` — just ensure it has smooth touch scrolling and `overscroll-behavior: contain` to prevent scroll chaining to the body.
 
-| File | Action |
+### Summary of Files Changed
+
+| File | Change |
 |------|--------|
-| Migration SQL | Add `last_message_at` to rooms, `expires_at` to messages |
-| `supabase/functions/cleanup-expired-messages/index.ts` | New -- deletes expired messages every minute |
-| `supabase/functions/cleanup-empty-rooms/index.ts` | Update -- use `last_message_at` logic instead of `empty_since` |
-| `supabase/config.toml` | Add `cleanup-expired-messages` function config |
-| `src/hooks/use-room.ts` | Fix state management, add ownership checks, update `last_message_at` on send/edit |
-| `src/pages/ChatRoom.tsx` | Fix z-index on context menu and reaction picker |
-| pg_cron SQL (insert tool) | Schedule both cleanup functions |
+| `src/index.css` | Add `html, body { height: 100%; overflow: hidden; position: fixed; width: 100%; }` |
+| `src/pages/ChatRoom.tsx` | Change outer container from `relative` with `--vh` height to `fixed inset-0` |
 
-### Edge Cases Handled
-
-- **User refresh mid-delete**: Messages are deleted server-side; client reloads from DB
-- **Two users delete same message**: Idempotent DELETE operations; realtime broadcasts removal to all
-- **Message expires while viewing**: Realtime DELETE event removes it from UI gracefully
-- **Room deletion during typing**: `chat:end` broadcast forces redirect
-- **Slow network reconnection**: Merge strategy prevents empty fetch from wiping state
-- **Multiple rapid edits**: Each edit re-encrypts and updates; last write wins with version increment
+### What Is NOT Changed
+- Encryption, room logic, message lifecycle, realtime logic — untouched
+- Header, input bar, and chat body already use `position: fixed` — no changes needed there
+- The `--vh` viewport listener remains for any other components that may use it
 
