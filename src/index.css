@@ -54,6 +54,13 @@
     @apply border-border;
   }
 
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
     -webkit-user-select: none;
