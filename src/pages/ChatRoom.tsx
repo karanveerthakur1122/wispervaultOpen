@@ -103,50 +103,32 @@ const ChatRoom = () => {
     prevMsgCountRef.current = messages.length;
   }, [messages.length]);
 
-  // Lock document scroll — prevent browser from scrolling when keyboard opens
+  // Dynamic viewport height for mobile keyboard stability
   useEffect(() => {
-    const preventScroll = () => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
-
-    // Immediately reset any scroll
-    preventScroll();
-    window.addEventListener('scroll', preventScroll, { passive: false });
-
-    // Dynamic viewport height for mobile keyboard stability
     const setVh = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty('--vh', `${h * 0.01}px`);
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     };
     setVh();
+    window.addEventListener('resize', setVh);
 
+    // Also use visualViewport for more accurate keyboard detection
     if (window.visualViewport) {
       const vv = window.visualViewport;
       const onVVResize = () => {
-        setVh();
-        // Force document back to top — iOS scrolls the page when keyboard opens
-        preventScroll();
-        // Scroll messages to bottom
+        document.documentElement.style.setProperty('--vh', `${vv.height * 0.01}px`);
+        // Scroll to bottom when keyboard opens
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
       };
       vv.addEventListener("resize", onVVResize);
-      vv.addEventListener("scroll", preventScroll);
       return () => {
-        window.removeEventListener('scroll', preventScroll);
+        window.removeEventListener('resize', setVh);
         vv.removeEventListener("resize", onVVResize);
-        vv.removeEventListener("scroll", preventScroll);
       };
     }
 
-    window.addEventListener('resize', setVh);
-    return () => {
-      window.removeEventListener('scroll', preventScroll);
-      window.removeEventListener('resize', setVh);
-    };
+    return () => window.removeEventListener('resize', setVh);
   }, []);
 
   // Redirect on chat end
@@ -312,7 +294,7 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ touchAction: 'none' }}>
+    <div className="fixed inset-0">
       {/* Screenshot black screen overlay */}
       {screenBlocked && (
         <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
@@ -405,7 +387,7 @@ const ChatRoom = () => {
       <div
         ref={scrollContainerRef}
         className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden p-4 space-y-3 overscroll-contain"
-        style={{ top: pinnedMessage ? '92px' : '60px', bottom: '70px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+        style={{ top: pinnedMessage ? '92px' : '60px', bottom: '70px', WebkitOverflowScrolling: 'touch' }}
         onClick={clearOverlays}
       >
         {messages.length === 0 && (
