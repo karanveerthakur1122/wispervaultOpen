@@ -279,6 +279,28 @@ const ChatRoom = () => {
     }
   }, []);
 
+  // Handle paste events for images, GIFs, stickers
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          // Preserve original type (gif, png, jpeg, webp, etc.)
+          const ext = file.type.split("/")[1] || "png";
+          const named = new File([file], `pasted-image.${ext}`, { type: file.type, lastModified: Date.now() });
+          setSelectedFile(named);
+          const url = URL.createObjectURL(named);
+          setFilePreviewUrl(url);
+        }
+        return; // Only handle first image
+      }
+    }
+  }, []);
+
   const scrollToMessage = useCallback((msgId: string) => {
     const el = document.querySelector(`[data-msg-id="${msgId}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -609,7 +631,7 @@ const ChatRoom = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+              accept="image/*,image/gif,video/*,audio/*,.pdf,.doc,.docx"
               className="hidden"
               onChange={handleFileSelect}
             />
@@ -618,6 +640,7 @@ const ChatRoom = () => {
               value={messageInput}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              onPaste={handlePaste}
               placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
               className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
             />
