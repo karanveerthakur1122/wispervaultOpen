@@ -59,6 +59,20 @@
     overflow: hidden;
     position: fixed;
     width: 100%;
+    overscroll-behavior: none;
+  }
+
+  html {
+    overflow: hidden !important;
+  }
+
+  #root {
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
   }
 
   body {
