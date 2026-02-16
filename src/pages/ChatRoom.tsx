@@ -294,7 +294,7 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="relative" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
+    <div className="fixed inset-0">
       {/* Screenshot black screen overlay */}
       {screenBlocked && (
         <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
@@ -387,7 +387,7 @@ const ChatRoom = () => {
       <div
         ref={scrollContainerRef}
         className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden p-4 space-y-3 overscroll-contain"
-        style={{ top: pinnedMessage ? '92px' : '60px', bottom: '70px' }}
+        style={{ top: pinnedMessage ? '92px' : '60px', bottom: '70px', WebkitOverflowScrolling: 'touch' }}
         onClick={clearOverlays}
       >
         {messages.length === 0 && (
