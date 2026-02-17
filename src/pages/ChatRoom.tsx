@@ -7,7 +7,6 @@ import {
   Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square
 } from "lucide-react";
 import EmojiPicker from "@/components/EmojiPicker";
-import GifPicker from "@/components/GifPicker";
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
@@ -44,7 +43,9 @@ const ChatRoom = () => {
   const [sendProgress, setSendProgress] = useState<{ stage: string; percent: number } | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [refreshPull, setRefreshPull] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -311,19 +312,31 @@ const ChatRoom = () => {
     inputRef.current?.focus();
   }, []);
 
-  const handleGifSelect = useCallback(async (gifUrl: string) => {
-    setShowGifPicker(false);
-    // Download the GIF and create a File for encrypted sending
-    try {
-      const resp = await fetch(gifUrl);
-      const blob = await resp.blob();
-      const file = new File([blob], "tenor.gif", { type: "image/gif" });
-      setSelectedFile(file);
-      setFilePreviewUrl(URL.createObjectURL(file));
-    } catch (e) {
-      console.error("Failed to fetch GIF:", e);
-    }
+  // Pull-to-refresh from header
+  const handleHeaderTouchStart = useCallback((e: React.TouchEvent) => {
+    headerTouchRef.current = { y: e.touches[0].clientY };
   }, []);
+
+  const handleHeaderTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!headerTouchRef.current || isRefreshing) return;
+    const dy = e.touches[0].clientY - headerTouchRef.current.y;
+    if (dy > 0) {
+      setRefreshPull(Math.min(dy, 120));
+    }
+  }, [isRefreshing]);
+
+  const handleHeaderTouchEnd = useCallback(() => {
+    if (refreshPull > 70 && !isRefreshing) {
+      setIsRefreshing(true);
+      haptic.medium();
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    } else {
+      setRefreshPull(0);
+    }
+    headerTouchRef.current = null;
+  }, [refreshPull, isRefreshing]);
 
   const scrollToMessage = useCallback((msgId: string) => {
     const el = document.querySelector(`[data-msg-id="${msgId}"]`);
@@ -351,8 +364,28 @@ const ChatRoom = () => {
           </div>
         </div>
       )}
+      {/* Pull-to-refresh indicator */}
+      {refreshPull > 0 && (
+        <div
+          className="fixed left-0 right-0 z-[1001] flex justify-center pointer-events-none transition-transform"
+          style={{ top: '60px', transform: `translateY(${Math.min(refreshPull * 0.5, 50)}px)`, opacity: Math.min(refreshPull / 70, 1) }}
+        >
+          <div className={`w-8 h-8 rounded-full bg-primary/20 backdrop-blur flex items-center justify-center ${isRefreshing ? 'animate-spin' : ''}`}>
+            <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 4v6h6M23 20v-6h-6" />
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+            </svg>
+          </div>
+        </div>
+      )}
       {/* Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 z-[1000] glass border-b border-border/50 px-4 py-3 flex items-center justify-between" style={{ backdropFilter: 'blur(20px)' }}>
+      <header
+        className="fixed top-0 left-0 right-0 z-[1000] glass border-b border-border/50 px-4 py-3 flex items-center justify-between select-none"
+        style={{ backdropFilter: 'blur(20px)' }}
+        onTouchStart={handleHeaderTouchStart}
+        onTouchMove={handleHeaderTouchMove}
+        onTouchEnd={handleHeaderTouchEnd}
+      >
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">
             {onlineUsers.slice(0, 5).map((u) => (
@@ -621,10 +654,6 @@ const ChatRoom = () => {
         <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
       )}
 
-      {/* GIF Picker */}
-      {showGifPicker && (
-        <GifPicker onSelect={handleGifSelect} onClose={() => setShowGifPicker(false)} />
-      )}
 
       {/* Input */}
       <div className="glass border-t border-border/50 p-3 relative">
@@ -658,17 +687,17 @@ const ChatRoom = () => {
               variant="ghost"
               size="icon"
               className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0"
-              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               <Smile className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0 text-[10px] font-bold"
-              onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0"
+              onClick={() => fileInputRef.current?.click()}
             >
-              GIF
+              <Paperclip className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"
