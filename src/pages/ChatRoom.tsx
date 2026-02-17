@@ -6,6 +6,8 @@ import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
   Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square
 } from "lucide-react";
+import EmojiPicker from "@/components/EmojiPicker";
+import GifPicker from "@/components/GifPicker";
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
@@ -41,6 +43,8 @@ const ChatRoom = () => {
   const [sendingFilePreview, setSendingFilePreview] = useState<string | null>(null);
   const [sendProgress, setSendProgress] = useState<{ stage: string; percent: number } | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -298,6 +302,26 @@ const ChatRoom = () => {
         }
         return; // Only handle first image
       }
+    }
+  }, []);
+
+  const handleEmojiSelect = useCallback((emoji: string) => {
+    setMessageInput((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleGifSelect = useCallback(async (gifUrl: string) => {
+    setShowGifPicker(false);
+    // Download the GIF and create a File for encrypted sending
+    try {
+      const resp = await fetch(gifUrl);
+      const blob = await resp.blob();
+      const file = new File([blob], "tenor.gif", { type: "image/gif" });
+      setSelectedFile(file);
+      setFilePreviewUrl(URL.createObjectURL(file));
+    } catch (e) {
+      console.error("Failed to fetch GIF:", e);
     }
   }, []);
 
@@ -592,8 +616,18 @@ const ChatRoom = () => {
         </div>
       )}
 
+      {/* Emoji Picker */}
+      {showEmojiPicker && (
+        <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
+      )}
+
+      {/* GIF Picker */}
+      {showGifPicker && (
+        <GifPicker onSelect={handleGifSelect} onClose={() => setShowGifPicker(false)} />
+      )}
+
       {/* Input */}
-      <div className="glass border-t border-border/50 p-3">
+      <div className="glass border-t border-border/50 p-3 relative">
         {voiceRecorder.isRecording ? (
           /* Voice recording UI */
           <div className="flex gap-2 items-center">
@@ -619,11 +653,27 @@ const ChatRoom = () => {
             </Button>
           </div>
         ) : (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1.5 items-center">
             <Button
               variant="ghost"
               size="icon"
-              className="h-11 w-11 rounded-full text-muted-foreground active:scale-90 transition-transform"
+              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0"
+              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+            >
+              <Smile className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0 text-[10px] font-bold"
+              onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+            >
+              GIF
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="w-4 h-4" />
