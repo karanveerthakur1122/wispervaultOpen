@@ -162,7 +162,10 @@ const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
           {EMOJI_CATEGORIES.map((cat, i) => (
             <button
               key={cat.name}
-              onClick={() => setActiveCategory(i)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setActiveCategory(i);
+              }}
               className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-sm transition-colors ${
                 activeCategory === i ? "bg-primary/20" : "hover:bg-secondary/30"
               }`}
@@ -181,7 +184,10 @@ const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
             {(filteredEmojis || []).map((emoji, i) => (
               <button
                 key={`${emoji}-${i}`}
-                onClick={() => { onSelect(emoji); onClose(); }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onSelect(emoji);
+                }}
                 className="w-9 h-9 flex items-center justify-center text-xl rounded-lg hover:bg-secondary/40 active:scale-110 transition-transform"
               >
                 {emoji}
@@ -197,7 +203,10 @@ const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
               {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji, i) => (
                 <button
                   key={`${emoji}-${i}`}
-                  onClick={() => { onSelect(emoji); onClose(); }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onSelect(emoji);
+                  }}
                   className="w-9 h-9 flex items-center justify-center text-xl rounded-lg hover:bg-secondary/40 active:scale-110 transition-transform"
                 >
                   {emoji}
