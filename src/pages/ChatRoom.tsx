@@ -308,8 +308,8 @@ const ChatRoom = () => {
 
   const handleEmojiSelect = useCallback((emoji: string) => {
     setMessageInput((prev) => prev + emoji);
-    setShowEmojiPicker(false);
-    inputRef.current?.focus();
+    // Keep emoji picker open so users can tap multiple emojis
+    // Do NOT close or refocus input (which triggers keyboard)
   }, []);
 
   // Pull-to-refresh from header
@@ -686,18 +686,14 @@ const ChatRoom = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className={`h-9 w-9 rounded-full active:scale-90 transition-transform flex-shrink-0 ${showEmojiPicker ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+              onMouseDown={(e) => {
+                e.preventDefault(); // prevent input blur / keyboard dismiss on desktop
+                inputRef.current?.blur(); // dismiss system keyboard on mobile
+                setShowEmojiPicker((prev) => !prev);
+              }}
             >
               <Smile className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"
@@ -760,6 +756,19 @@ const ChatRoom = () => {
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center animate-fade-in"
           onClick={() => setLightboxUrl(null)}
         >
+          {/* Back button — top left */}
+          <div className="absolute top-4 left-4 z-10">
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur text-white text-sm font-medium active:scale-90 transition-transform"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 5l-7 7 7 7" />
+              </svg>
+              Back
+            </button>
+          </div>
+          {/* Close X — top right */}
           <div className="absolute top-4 right-4 z-10">
             <button
               onClick={() => setLightboxUrl(null)}
