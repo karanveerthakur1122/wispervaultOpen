@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, LogIn, Shield, Lock, Clock, X, ArrowRight } from "lucide-react";
+import { Plus, LogIn, Shield, Lock, Clock, X, ArrowRight, Globe, Github } from "lucide-react";
 import GlassCard from "@/components/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -253,9 +253,31 @@ const Home = () => {
         </AnimatePresence>
 
         {/* Footer */}
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/50 pt-4">
-          <Lock className="w-3 h-3" />
-          <span>End-to-end encrypted · Zero knowledge</span>
+        <div className="flex flex-col items-center gap-3 pt-4">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/50">
+            <Lock className="w-3 h-3" />
+            <span>End-to-end encrypted · Zero knowledge</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://www.karanveerthakur.com.np/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground/50 hover:text-primary transition-colors"
+              aria-label="Creator website"
+            >
+              <Globe className="w-4 h-4" />
+            </a>
+            <a
+              href="https://github.com/karanveerthakur1122"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground/50 hover:text-primary transition-colors"
+              aria-label="GitHub"
+            >
+              <Github className="w-4 h-4" />
+            </a>
+          </div>
         </div>
       </motion.div>
     </div>
