@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2
 } from "lucide-react";
 import EmojiPicker from "@/components/EmojiPicker";
 import { haptic } from "@/lib/haptics";
@@ -45,6 +45,7 @@ const ChatRoom = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [refreshPull, setRefreshPull] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isEndingChat, setIsEndingChat] = useState(false);
   const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -435,7 +436,10 @@ const ChatRoom = () => {
             <AlertDialogFooter>
               <AlertDialogCancel className="rounded-xl border-border/50">Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={isCreator ? endChat : leaveRoom}
+                onClick={isCreator ? async () => {
+                  setIsEndingChat(true);
+                  await endChat();
+                } : leaveRoom}
                 className={`rounded-xl ${
                   isCreator ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""
                 }`}
@@ -785,6 +789,22 @@ const ChatRoom = () => {
           />
         </div>
       )}
+
+      {/* Ending Chat Overlay */}
+      <AnimatePresence>
+        {isEndingChat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4"
+          >
+            <Loader2 className="w-10 h-10 text-destructive animate-spin" />
+            <p className="text-foreground font-medium text-lg">Deleting chat…</p>
+            <p className="text-muted-foreground text-sm">Removing all messages and data</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
