@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, LogIn, Shield, Lock, Clock, X, ArrowRight, Globe, Github } from "lucide-react";
+import { Plus, LogIn, Shield, Lock, Clock, X, ArrowRight, Globe, Github, Info } from "lucide-react";
 import GlassCard from "@/components/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -281,6 +281,15 @@ const Home = () => {
           <Github className="w-4 h-4" />
         </a>
       </div>
+
+      {/* Bottom-right know more */}
+      <button
+        onClick={() => navigate("/know-more")}
+        className="fixed bottom-4 right-4 flex items-center gap-1.5 text-xs text-muted-foreground/40 hover:text-primary transition-colors"
+      >
+        <Info className="w-4 h-4" />
+        <span>Know More</span>
+      </button>
     </div>
   );
 };

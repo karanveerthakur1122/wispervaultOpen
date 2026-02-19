@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
 import ChatRoom from "./pages/ChatRoom";
+import KnowMore from "./pages/KnowMore";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const AppContent = () => {
       <Route path="/create" element={<CreateRoom />} />
       <Route path="/join/:roomId" element={<JoinRoom />} />
       <Route path="/room/:roomId" element={<ChatRoom />} />
+      <Route path="/know-more" element={<KnowMore />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
