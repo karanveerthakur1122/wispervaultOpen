@@ -258,12 +258,13 @@ const Home = () => {
             <Lock className="w-3 h-3" />
             <span>End-to-end encrypted · Zero knowledge</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground/40">
+            <span>Developer:</span>
             <a
               href="https://www.karanveerthakur.com.np/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground/50 hover:text-primary transition-colors"
+              className="hover:text-primary transition-colors"
               aria-label="Creator website"
             >
               <Globe className="w-4 h-4" />
@@ -272,7 +273,7 @@ const Home = () => {
               href="https://github.com/karanveerthakur1122"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground/50 hover:text-primary transition-colors"
+              className="hover:text-primary transition-colors"
               aria-label="GitHub"
             >
               <Github className="w-4 h-4" />
