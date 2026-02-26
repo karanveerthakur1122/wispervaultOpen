@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.cleanup-expired-messages]
 verify_jwt = false
+
+[functions.verify-room-password]
+verify_jwt = false
+
+[functions.tenor-search]
+verify_jwt = false
