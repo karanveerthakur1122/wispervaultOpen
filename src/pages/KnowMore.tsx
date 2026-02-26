@@ -84,7 +84,7 @@ const KnowMore = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-6 pb-16 relative overflow-hidden">
+    <div className="fixed inset-0 flex flex-col items-center p-6 pb-16 relative overflow-y-auto overflow-x-hidden">
       {/* Background glow */}
       <div className="absolute top-1/4 -left-20 w-60 h-60 rounded-full bg-primary/10 blur-[100px]" />
       <div className="absolute bottom-1/4 -right-20 w-60 h-60 rounded-full bg-primary/5 blur-[100px]" />
