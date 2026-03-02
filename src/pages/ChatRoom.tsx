@@ -78,9 +78,29 @@ const ChatRoom = () => {
   }, [roomId, navigate]);
 
   const {
-    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents,
+    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt,
     sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot,
   } = useRoom(roomConfig);
+
+  // Live elapsed timer
+  const [elapsed, setElapsed] = useState("");
+  useEffect(() => {
+    if (!roomCreatedAt) return;
+    const update = () => {
+      const diff = Math.max(0, Math.floor((Date.now() - new Date(roomCreatedAt).getTime()) / 1000));
+      const h = Math.floor(diff / 3600);
+      const m = Math.floor((diff % 3600) / 60);
+      const s = diff % 60;
+      setElapsed(
+        h > 0
+          ? `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`
+          : `${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`
+      );
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [roomCreatedAt]);
 
   const isCreator = roomConfig?.isCreator ?? false;
 
@@ -423,6 +443,14 @@ const ChatRoom = () => {
               <Users className="w-3 h-3" /> {onlineUsers.length} online
               {!isConnected && <span className="text-destructive ml-1">· connecting...</span>}
             </p>
+            {roomCreatedAt && (
+              <p className="text-[10px] text-muted-foreground/50 font-mono flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                Live {elapsed}
+                <span className="mx-0.5">·</span>
+                {new Date(roomCreatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
+              </p>
+            )}
           </div>
         </div>
         <AlertDialog>
