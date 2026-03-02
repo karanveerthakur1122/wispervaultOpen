@@ -4,6 +4,7 @@ export interface VoiceRecorderState {
   isRecording: boolean;
   isPaused: boolean;
   duration: number;
+  recordedDuration: number;
   stream: MediaStream | null;
   previewUrl: string | null;
   start: () => Promise<void>;
@@ -14,6 +15,7 @@ export interface VoiceRecorderState {
   finishRecording: () => Promise<void>;
   discardPreview: () => void;
   sendPreview: () => File | null;
+  reRecord: () => Promise<void>;
 }
 
 export function useVoiceRecorder(): VoiceRecorderState {
@@ -21,6 +23,7 @@ export function useVoiceRecorder(): VoiceRecorderState {
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [recordedDuration, setRecordedDuration] = useState(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -129,6 +132,7 @@ export function useVoiceRecorder(): VoiceRecorderState {
         previewFileRef.current = file;
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
+        setRecordedDuration(duration);
         cleanup();
         resolve();
       };
@@ -139,7 +143,14 @@ export function useVoiceRecorder(): VoiceRecorderState {
 
   const discardPreview = useCallback(() => {
     clearPreview();
+    setRecordedDuration(0);
   }, [clearPreview]);
+
+  const reRecord = useCallback(async () => {
+    clearPreview();
+    setRecordedDuration(0);
+    await start();
+  }, [clearPreview, start]);
 
   const sendPreview = useCallback((): File | null => {
     const file = previewFileRef.current;
@@ -196,6 +207,7 @@ export function useVoiceRecorder(): VoiceRecorderState {
     isRecording,
     isPaused,
     duration,
+    recordedDuration,
     stream: streamRef.current,
     previewUrl,
     start,
@@ -206,5 +218,6 @@ export function useVoiceRecorder(): VoiceRecorderState {
     finishRecording,
     discardPreview,
     sendPreview,
+    reRecord,
   };
 }

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw
 } from "lucide-react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
@@ -747,9 +747,21 @@ const ChatRoom = () => {
             >
               <Trash2 className="w-5 h-5" />
             </Button>
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col gap-0.5">
               <PlaybackWaveform src={voiceRecorder.previewUrl} isOwn={false} />
+              <span className="text-[10px] text-muted-foreground text-center">
+                {formatDuration(voiceRecorder.recordedDuration)}
+              </span>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform"
+              onClick={voiceRecorder.reRecord}
+              title="Re-record"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
             <Button
               onClick={handleVoicePreviewSend}
               disabled={isSending}
