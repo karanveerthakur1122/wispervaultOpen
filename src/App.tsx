@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import DesktopBlocker from "@/components/DesktopBlocker";
+import ConnectionBlockedOverlay from "@/components/ConnectionBlockedOverlay";
 import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
@@ -16,6 +18,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const isMobile = useIsMobile();
+  const { status, retry } = useConnectivity();
 
   // Show desktop blocker on non-mobile
   if (isMobile === false) {
@@ -23,8 +26,13 @@ const AppContent = () => {
   }
 
   // Wait for detection
-  if (isMobile === undefined) {
+  if (isMobile === undefined || status === "checking") {
     return null;
+  }
+
+  // Show connection blocked overlay
+  if (status === "blocked") {
+    return <ConnectionBlockedOverlay onRetry={retry} isChecking={false} />;
   }
 
   return (
