@@ -28,9 +28,10 @@ export function RecordingWaveform({ stream }: RecordingWaveformProps) {
 
     const draw = () => {
       animRef.current = requestAnimationFrame(draw);
+      if (!canvasRef.current) return;
       analyser.getByteFrequencyData(dataArray);
 
-      const canvas = canvasRef.current!;
+      const canvas = canvasRef.current;
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
