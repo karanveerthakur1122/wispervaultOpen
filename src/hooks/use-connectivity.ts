@@ -9,12 +9,14 @@ export type ConnectivityStatus = "checking" | "connected" | "blocked";
 
 export function useConnectivity() {
   const [status, setStatus] = useState<ConnectivityStatus>("checking");
+  const [latency, setLatency] = useState<number | null>(null);
   const wasBlockedRef = useRef(false);
 
   const checkConnection = useCallback(async (timeout = 8000): Promise<boolean> => {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeout);
+      const start = performance.now();
 
       const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
         method: "HEAD",
@@ -25,8 +27,11 @@ export function useConnectivity() {
       });
 
       clearTimeout(timer);
+      const elapsed = Math.round(performance.now() - start);
+      setLatency(elapsed);
       return response.ok || response.status === 400;
     } catch {
+      setLatency(null);
       return false;
     }
   }, []);
@@ -80,5 +85,15 @@ export function useConnectivity() {
     };
   }, [runCheck, checkConnection, applyResult]);
 
-  return { status, retry };
+  // Derive server region from Supabase URL
+  const serverRegion = (() => {
+    try {
+      const ref = new URL(SUPABASE_URL).hostname.split(".")[0];
+      return ref ? `Region: ${ref.slice(0, 3).toUpperCase()}` : "Unknown";
+    } catch {
+      return "Unknown";
+    }
+  })();
+
+  return { status, retry, latency, serverRegion };
 }
