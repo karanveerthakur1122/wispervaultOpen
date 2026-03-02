@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2
 } from "lucide-react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
@@ -43,7 +43,7 @@ const ChatRoom = () => {
   const [sendingText, setSendingText] = useState<string | null>(null);
   const [sendingFilePreview, setSendingFilePreview] = useState<string | null>(null);
   const [sendProgress, setSendProgress] = useState<{ stage: string; percent: number } | null>(null);
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxData, setLightboxData] = useState<{ url: string; messageId: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [refreshPull, setRefreshPull] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -588,7 +588,7 @@ const ChatRoom = () => {
                 onlineUserCount={onlineUsers.length}
                 onReply={handleReply}
                 onScrollToMessage={scrollToMessage}
-                onLightbox={setLightboxUrl}
+                onLightbox={(url, messageId) => setLightboxData({ url, messageId })}
               />
             );
           });
@@ -822,15 +822,15 @@ const ChatRoom = () => {
       </div>{/* end fixed bottom area */}
 
       {/* Image Lightbox */}
-      {lightboxUrl && (
+      {lightboxData && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center animate-fade-in"
-          onClick={() => setLightboxUrl(null)}
+          onClick={() => setLightboxData(null)}
         >
           {/* Back button — top left */}
           <div className="absolute top-4 left-4 z-10">
             <button
-              onClick={() => setLightboxUrl(null)}
+              onClick={() => setLightboxData(null)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur text-white text-sm font-medium active:scale-90 transition-transform"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -839,17 +839,30 @@ const ChatRoom = () => {
               Back
             </button>
           </div>
-          {/* Close X — top right */}
-          <div className="absolute top-4 right-4 z-10">
+          {/* Delete & Close — top right */}
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
             <button
-              onClick={() => setLightboxUrl(null)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("Delete this media message?")) {
+                  deleteMessage(lightboxData.messageId);
+                  setLightboxData(null);
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-destructive/80 backdrop-blur text-white text-sm font-medium active:scale-90 transition-transform"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+            <button
+              onClick={() => setLightboxData(null)}
               className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
           <img
-            src={lightboxUrl}
+            src={lightboxData.url}
             alt="Full size"
             className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
@@ -893,7 +906,7 @@ interface MessageBubbleProps {
   onlineUserCount: number;
   onReply: (msg: DecryptedMessage) => void;
   onScrollToMessage: (msgId: string) => void;
-  onLightbox: (url: string) => void;
+  onLightbox: (url: string, messageId: string) => void;
 }
 
 const MessageBubble = memo(({
@@ -1132,7 +1145,7 @@ const MessageBubble = memo(({
             <div className="mb-2">
               {mediaObjectUrl ? (
                 msg.mediaType.startsWith("image/") ? (
-                  <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl); }}>
+                  <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id); }}>
                     <img src={mediaObjectUrl} alt="Encrypted media" className="rounded-lg max-w-full" />
                     <div className="absolute inset-0 bg-black/0 group-active:bg-black/20 rounded-lg transition-colors flex items-center justify-center">
                       <ZoomIn className="w-6 h-6 text-white opacity-0 group-active:opacity-80 transition-opacity" />
