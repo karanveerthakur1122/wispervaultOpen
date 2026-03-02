@@ -28,6 +28,7 @@ export function useVoiceRecorder(): VoiceRecorderState {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const resolveRef = useRef<((file: File | null) => void) | null>(null);
   const previewFileRef = useRef<File | null>(null);
 
@@ -48,14 +49,15 @@ export function useVoiceRecorder(): VoiceRecorderState {
   }, []);
 
   const clearPreview = useCallback(() => {
-    if (previewUrl) {
+    const urlToRevoke = previewUrlRef.current;
+    if (urlToRevoke) {
       // Delay revoking so audio/playback elements can finish using it
-      const urlToRevoke = previewUrl;
       setTimeout(() => URL.revokeObjectURL(urlToRevoke), 500);
     }
+    previewUrlRef.current = null;
     setPreviewUrl(null);
     previewFileRef.current = null;
-  }, [previewUrl]);
+  }, []);
 
   const start = useCallback(async () => {
     clearPreview();
@@ -138,6 +140,7 @@ export function useVoiceRecorder(): VoiceRecorderState {
         });
         previewFileRef.current = file;
         const url = URL.createObjectURL(blob);
+        previewUrlRef.current = url;
         setPreviewUrl(url);
         setRecordedDuration(capturedDuration);
         cleanup();
@@ -160,10 +163,8 @@ export function useVoiceRecorder(): VoiceRecorderState {
   }, [clearPreview, start]);
 
   const sendPreview = useCallback((): File | null => {
-    const file = previewFileRef.current;
-    clearPreview();
-    return file;
-  }, [clearPreview]);
+    return previewFileRef.current;
+  }, []);
 
   const stop = useCallback((): Promise<File | null> => {
     return new Promise((resolve) => {

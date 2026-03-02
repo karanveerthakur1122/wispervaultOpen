@@ -121,6 +121,7 @@ const ChatRoom = () => {
       await sendMessage("🎤 Voice message", file, replyTo || undefined, (stage, percent) => {
         setSendProgress({ stage, percent });
       });
+      voiceRecorder.discardPreview();
     } catch (err) {
       console.error("Voice send failed:", err);
     } finally {

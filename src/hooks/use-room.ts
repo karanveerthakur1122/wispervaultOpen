@@ -593,7 +593,7 @@ export function useRoom(config: RoomConfig | null) {
     }
 
     onProgress?.("sending", 90);
-    await supabase.from("messages").insert({
+    const { error: insertError } = await supabase.from("messages").insert({
       room_id: config.roomId,
       encrypted_blob: encrypted,
       iv,
@@ -602,8 +602,20 @@ export function useRoom(config: RoomConfig | null) {
       media_url: mediaUrl,
       media_type: mediaType,
     });
+    if (insertError) {
+      console.error("Message insert failed:", insertError);
+      throw new Error(`Message send failed: ${insertError.message}`);
+    }
+
     // Update room's last_message_at
-    await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
+    const { error: roomUpdateError } = await supabase
+      .from("rooms")
+      .update({ last_message_at: new Date().toISOString() })
+      .eq("room_id", config.roomId);
+    if (roomUpdateError) {
+      console.error("Room update failed:", roomUpdateError);
+    }
+
     onProgress?.("done", 100);
   }, [config]);
 
