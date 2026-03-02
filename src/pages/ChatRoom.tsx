@@ -822,9 +822,9 @@ const ChatRoom = () => {
       </div>{/* end fixed bottom area */}
 
       {/* Image Lightbox */}
-      {lightboxData && (
+      {lightboxData && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center animate-fade-in"
+          className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center animate-fade-in"
           onClick={() => setLightboxData(null)}
         >
           {/* Back button — top left */}
@@ -867,7 +867,8 @@ const ChatRoom = () => {
             className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Ending Chat Overlay */}
