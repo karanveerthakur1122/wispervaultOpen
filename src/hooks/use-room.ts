@@ -584,10 +584,12 @@ export function useRoom(config: RoomConfig | null) {
 
       onProgress?.("uploading", 85);
       
-      if (!error) {
-        mediaUrl = JSON.stringify({ path: filePath, iv: fileIv });
-        mediaType = mimeType;
+      if (error) {
+        console.error("Storage upload failed:", error);
+        throw new Error(`Upload failed: ${error.message}`);
       }
+      mediaUrl = JSON.stringify({ path: filePath, iv: fileIv });
+      mediaType = mimeType;
     }
 
     onProgress?.("sending", 90);
