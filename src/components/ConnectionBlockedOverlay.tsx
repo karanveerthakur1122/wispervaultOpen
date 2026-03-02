@@ -14,12 +14,22 @@ const ConnectionBlockedOverlay = ({ onRetry, checkingStatus }: Props) => {
   const [isChecking, setIsChecking] = useState(false);
   const retryCountRef = useRef(0);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const handleRetry = async () => {
     setIsChecking(true);
     retryCountRef.current++;
+    abortRef.current = new AbortController();
     await onRetry();
-    // Keep checking state visible briefly after retry completes
-    setTimeout(() => setIsChecking(false), 800);
+    if (!abortRef.current?.signal.aborted) {
+      setTimeout(() => setIsChecking(false), 800);
+    }
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsChecking(false);
   };
 
   const checking = isChecking || checkingStatus === "checking";
@@ -63,6 +73,13 @@ const ConnectionBlockedOverlay = ({ onRetry, checkingStatus }: Props) => {
                 />
               ))}
             </div>
+            <Button
+              variant="ghost"
+              onClick={handleCancel}
+              className="mt-5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </Button>
           </motion.div>
         )}
 
