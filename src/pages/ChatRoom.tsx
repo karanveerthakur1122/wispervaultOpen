@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play
 } from "lucide-react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
@@ -104,8 +104,12 @@ const ChatRoom = () => {
 
   const isCreator = roomConfig?.isCreator ?? false;
 
-  const handleVoiceSend = useCallback(async () => {
-    const file = await voiceRecorder.stop();
+  const handleVoiceFinish = useCallback(async () => {
+    await voiceRecorder.finishRecording();
+  }, [voiceRecorder]);
+
+  const handleVoicePreviewSend = useCallback(async () => {
+    const file = voiceRecorder.sendPreview();
     if (!file) return;
     setIsSending(true);
     setSendingText("🎤 Voice message");
@@ -732,8 +736,35 @@ const ChatRoom = () => {
 
       {/* Input */}
       <div className="glass border-t border-border/50 p-3 relative">
-        {voiceRecorder.isRecording ? (
-          /* Voice recording UI */
+        {voiceRecorder.previewUrl ? (
+          /* Voice preview mode — play before sending */
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-full text-destructive active:scale-90 transition-transform"
+              onClick={voiceRecorder.discardPreview}
+            >
+              <Trash2 className="w-5 h-5" />
+            </Button>
+            <div className="flex-1">
+              <PlaybackWaveform src={voiceRecorder.previewUrl} isOwn={false} />
+            </div>
+            <Button
+              onClick={handleVoicePreviewSend}
+              disabled={isSending}
+              size="icon"
+              className="h-11 w-11 rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform"
+            >
+              {isSending ? (
+                <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        ) : voiceRecorder.isRecording ? (
+          /* Voice recording UI with pause/resume */
           <div className="flex gap-2 items-center">
             <Button
               variant="ghost"
@@ -744,16 +775,32 @@ const ChatRoom = () => {
               <X className="w-5 h-5" />
             </Button>
             <div className="flex-1 flex items-center gap-3 px-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse flex-shrink-0" />
+              {voiceRecorder.isPaused ? (
+                <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground flex-shrink-0" />
+              ) : (
+                <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse flex-shrink-0" />
+              )}
               <RecordingWaveform stream={voiceRecorder.stream} />
-              <span className="text-sm font-mono text-foreground flex-shrink-0">{formatDuration(voiceRecorder.duration)}</span>
+              <span className="text-sm font-mono text-foreground flex-shrink-0">
+                {formatDuration(voiceRecorder.duration)}
+              </span>
             </div>
+            {/* Pause / Resume */}
             <Button
-              onClick={handleVoiceSend}
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-full text-foreground active:scale-90 transition-transform"
+              onClick={voiceRecorder.isPaused ? voiceRecorder.resume : voiceRecorder.pause}
+            >
+              {voiceRecorder.isPaused ? <Play className="w-5 h-5 ml-0.5" /> : <Pause className="w-5 h-5" />}
+            </Button>
+            {/* Done — go to preview */}
+            <Button
+              onClick={handleVoiceFinish}
               size="icon"
               className="h-11 w-11 rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform"
             >
-              <Send className="w-4 h-4" />
+              <Check className="w-5 h-5" />
             </Button>
           </div>
         ) : (
