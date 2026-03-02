@@ -20,20 +20,25 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const isMobile = useIsMobile();
   const { status, retry, latency, serverRegion } = useConnectivity();
+  const wasEverBlocked = status === "blocked" || (status === "checking" && sessionStorage.getItem("was_blocked") === "1");
+
+  // Track if user was ever blocked this session
+  if (status === "blocked") sessionStorage.setItem("was_blocked", "1");
+  if (status === "connected") sessionStorage.removeItem("was_blocked");
 
   // Show desktop blocker on non-mobile
   if (isMobile === false) {
     return <DesktopBlocker />;
   }
 
-  // Wait for detection
-  if (isMobile === undefined || status === "checking") {
+  // Wait for initial detection only
+  if (isMobile === undefined || (status === "checking" && !wasEverBlocked)) {
     return null;
   }
 
-  // Show connection blocked overlay
-  if (status === "blocked") {
-    return <ConnectionBlockedOverlay onRetry={retry} />;
+  // Show connection blocked overlay (keep it during retry too)
+  if (status === "blocked" || (status === "checking" && wasEverBlocked)) {
+    return <ConnectionBlockedOverlay onRetry={retry} checkingStatus={status} />;
   }
 
   return (
