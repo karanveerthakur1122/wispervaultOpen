@@ -83,6 +83,7 @@ export function useRoom(config: RoomConfig | null) {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [pinnedMessage, setPinnedMessage] = useState<DecryptedMessage | null>(null);
   const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
+  const [roomCreatedAt, setRoomCreatedAt] = useState<string | null>(null);
   const keyRef = useRef<CryptoKey | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
@@ -164,14 +165,16 @@ export function useRoom(config: RoomConfig | null) {
     const setup = async () => {
       const { data: existingRoom } = await supabase
         .from("rooms")
-        .select("room_id, user_count, active")
+        .select("room_id, user_count, active, created_at")
         .eq("room_id", config.roomId)
         .eq("active", true)
         .maybeSingle();
 
       if (!existingRoom) {
-        await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1, empty_since: null });
+        const { data: newRoom } = await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1, empty_since: null }).select("created_at").single();
+        if (newRoom) setRoomCreatedAt(newRoom.created_at);
       } else {
+        setRoomCreatedAt(existingRoom.created_at);
         // Use actual active presence count instead of stale user_count
         const { count } = await supabase
           .from("presence")
@@ -864,6 +867,7 @@ export function useRoom(config: RoomConfig | null) {
     typingUsers,
     pinnedMessage,
     systemEvents,
+    roomCreatedAt,
     sendMessage,
     sendTyping,
     endChat,
