@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download
 } from "lucide-react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
@@ -79,7 +79,7 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved,
   } = useRoom(roomConfig);
 
   // Live elapsed timer
@@ -563,6 +563,10 @@ const ChatRoom = () => {
                       <span className="font-medium text-foreground">{evt.username}</span>
                       {evt.type === "screenshot"
                         ? " took a screenshot ⚠️"
+                        : evt.type === "message_deleted"
+                        ? " deleted a message 🗑️"
+                        : evt.type === "media_saved"
+                        ? " saved a media 💾"
                         : ` has ${evt.type === "join" ? "joined" : "left"}`}
                     </span>
                   </div>
@@ -839,12 +843,32 @@ const ChatRoom = () => {
               Back
             </button>
           </div>
-          {/* Delete & Close — top right */}
+          {/* Actions — top right */}
           <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            {/* Save/Download */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm("Delete this media message?")) {
+                if (window.confirm("Saving this media will notify all users in the room. Continue?")) {
+                  const a = document.createElement("a");
+                  a.href = lightboxData.url;
+                  a.download = `media-${Date.now()}.jpg`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  broadcastMediaSaved();
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-medium active:scale-90 transition-transform"
+            >
+              <Download className="w-4 h-4" />
+              Save
+            </button>
+            {/* Delete */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("Deleting this media will notify all users in the room. Continue?")) {
                   deleteMessage(lightboxData.messageId);
                   setLightboxData(null);
                 }
@@ -854,6 +878,7 @@ const ChatRoom = () => {
               <Trash2 className="w-4 h-4" />
               Delete
             </button>
+            {/* Close */}
             <button
               onClick={() => setLightboxData(null)}
               className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"

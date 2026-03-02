@@ -69,7 +69,7 @@ function parseReply(raw: string): { text: string; replyTo: ReplyInfo | null } {
 
 export interface SystemEvent {
   id: string;
-  type: "join" | "leave" | "screenshot";
+  type: "join" | "leave" | "screenshot" | "message_deleted" | "media_saved";
   username: string;
   color: string;
   timestamp: number;
@@ -511,6 +511,24 @@ export function useRoom(config: RoomConfig | null) {
             { id: crypto.randomUUID(), type: "screenshot", username: ssUser, color, timestamp: Date.now() },
           ]);
         })
+        .on("broadcast", { event: "message_deleted" }, (payload) => {
+          const { username: delUser, color } = payload.payload as { username: string; color: string };
+          if (delUser !== config.username) {
+            setSystemEvents((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "message_deleted", username: delUser, color, timestamp: Date.now() },
+            ]);
+          }
+        })
+        .on("broadcast", { event: "media_saved" }, (payload) => {
+          const { username: saveUser, color } = payload.payload as { username: string; color: string };
+          if (saveUser !== config.username) {
+            setSystemEvents((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "media_saved", username: saveUser, color, timestamp: Date.now() },
+            ]);
+          }
+        })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
           // Broadcast join event once subscribed
@@ -665,6 +683,18 @@ export function useRoom(config: RoomConfig | null) {
         if (prev.some((m) => m.id === messageId)) return prev;
         return [...prev, msg].sort((a, b) => a.timestamp - b.timestamp);
       });
+    } else {
+      // Broadcast deletion event to all users
+      channelRef.current?.send({
+        type: "broadcast",
+        event: "message_deleted",
+        payload: { username: config.username, color: config.avatarColor },
+      });
+      // Add locally
+      setSystemEvents((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), type: "message_deleted", username: config.username, color: config.avatarColor, timestamp: Date.now() },
+      ]);
     }
   }, [config]);
 
@@ -859,6 +889,20 @@ export function useRoom(config: RoomConfig | null) {
     ]);
   }, [config]);
 
+  const broadcastMediaSaved = useCallback(() => {
+    if (!config || !channelRef.current) return;
+    channelRef.current.send({
+      type: "broadcast",
+      event: "media_saved",
+      payload: { username: config.username, color: config.avatarColor },
+    });
+    // Add locally
+    setSystemEvents((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), type: "media_saved", username: config.username, color: config.avatarColor, timestamp: Date.now() },
+    ]);
+  }, [config]);
+
   return {
     messages,
     onlineUsers,
@@ -879,5 +923,6 @@ export function useRoom(config: RoomConfig | null) {
     markAsRead,
     recordMediaView,
     reportScreenshot,
+    broadcastMediaSaved,
   };
 }
