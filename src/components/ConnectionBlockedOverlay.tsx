@@ -1,15 +1,22 @@
 import { motion } from "framer-motion";
-import { WifiOff, RefreshCw, Shield, ChevronDown, ChevronUp, Smartphone, Monitor, Globe } from "lucide-react";
+import { WifiOff, RefreshCw, Shield, ChevronDown, ChevronUp, Smartphone, Monitor, Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 interface Props {
-  onRetry: () => void;
-  isChecking: boolean;
+  onRetry: () => Promise<void>;
 }
 
-const ConnectionBlockedOverlay = ({ onRetry, isChecking }: Props) => {
+const ConnectionBlockedOverlay = ({ onRetry }: Props) => {
   const [showSteps, setShowSteps] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+
+  const handleRetry = async () => {
+    setIsChecking(true);
+    await onRetry();
+    // Small delay so the user sees the checking state
+    setTimeout(() => setIsChecking(false), 500);
+  };
 
   return (
     <motion.div
@@ -26,6 +33,19 @@ const ConnectionBlockedOverlay = ({ onRetry, isChecking }: Props) => {
         transition={{ delay: 0.1, type: "spring" }}
         className="w-full max-w-sm mx-auto space-y-6 relative min-h-screen flex flex-col justify-center py-10 px-6"
       >
+        {/* Checking overlay */}
+        {isChecking && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl"
+          >
+            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+            <p className="text-sm font-medium text-foreground">Checking connection...</p>
+            <p className="text-xs text-muted-foreground mt-1">This may take a few seconds</p>
+          </motion.div>
+        )}
+
         {/* Icon */}
         <div className="text-center space-y-3">
           <motion.div
@@ -62,7 +82,6 @@ const ConnectionBlockedOverlay = ({ onRetry, isChecking }: Props) => {
             />
           </div>
 
-          {/* Expandable steps */}
           <button
             onClick={() => setShowSteps(!showSteps)}
             className="flex items-center gap-1.5 text-xs text-primary/80 hover:text-primary transition-colors w-full"
@@ -116,12 +135,21 @@ const ConnectionBlockedOverlay = ({ onRetry, isChecking }: Props) => {
 
         {/* Retry Button */}
         <Button
-          onClick={onRetry}
+          onClick={handleRetry}
           disabled={isChecking}
-          className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base gap-2"
+          className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base gap-2 disabled:opacity-50"
         >
-          <RefreshCw className={`w-5 h-5 ${isChecking ? "animate-spin" : ""}`} />
-          {isChecking ? "Checking connection..." : "Retry Connection"}
+          {isChecking ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Checking connection...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-5 h-5" />
+              Retry Connection
+            </>
+          )}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground/50">
