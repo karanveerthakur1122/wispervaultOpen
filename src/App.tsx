@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import DesktopBlocker from "@/components/DesktopBlocker";
 import ConnectionBlockedOverlay from "@/components/ConnectionBlockedOverlay";
+import ConnectionStatusDot from "@/components/ConnectionStatusDot";
 import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
@@ -32,18 +33,21 @@ const AppContent = () => {
 
   // Show connection blocked overlay
   if (status === "blocked") {
-    return <ConnectionBlockedOverlay onRetry={retry} isChecking={false} />;
+    return <ConnectionBlockedOverlay onRetry={retry} />;
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/create" element={<CreateRoom />} />
-      <Route path="/join/:roomId" element={<JoinRoom />} />
-      <Route path="/room/:roomId" element={<ChatRoom />} />
-      <Route path="/know-more" element={<KnowMore />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <ConnectionStatusDot status={status} />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/create" element={<CreateRoom />} />
+        <Route path="/join/:roomId" element={<JoinRoom />} />
+        <Route path="/room/:roomId" element={<ChatRoom />} />
+        <Route path="/know-more" element={<KnowMore />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 };
 
