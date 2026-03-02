@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const CHECK_INTERVAL = 30_000; // 30s
-const INITIAL_CHECK_TIMEOUT = 8_000; // 8s for first check
+const CHECK_INTERVAL = 30_000;
+const INITIAL_CHECK_TIMEOUT = 8_000;
 
 export type ConnectivityStatus = "checking" | "connected" | "blocked";
 
 export function useConnectivity() {
   const [status, setStatus] = useState<ConnectivityStatus>("checking");
-  const prevStatusRef = useRef<ConnectivityStatus>("checking");
+  const wasBlockedRef = useRef(false);
 
   const checkConnection = useCallback(async (timeout = 8000): Promise<boolean> => {
     try {
@@ -31,24 +31,26 @@ export function useConnectivity() {
     }
   }, []);
 
-  const updateStatus = useCallback((newStatus: ConnectivityStatus) => {
-    setStatus((prev) => {
-      // Show toast when transitioning from blocked to connected
-      if (prev === "blocked" && newStatus === "connected") {
+  const applyResult = useCallback((reachable: boolean) => {
+    if (reachable) {
+      if (wasBlockedRef.current) {
         toast.success("Connection restored!", {
           description: "You're back online. Everything should work normally now.",
           duration: 4000,
         });
       }
-      prevStatusRef.current = prev;
-      return newStatus;
-    });
+      wasBlockedRef.current = false;
+      setStatus("connected");
+    } else {
+      wasBlockedRef.current = true;
+      setStatus("blocked");
+    }
   }, []);
 
   const runCheck = useCallback(async () => {
     const reachable = await checkConnection(INITIAL_CHECK_TIMEOUT);
-    updateStatus(reachable ? "connected" : "blocked");
-  }, [checkConnection, updateStatus]);
+    applyResult(reachable);
+  }, [checkConnection, applyResult]);
 
   const retry = useCallback(async () => {
     setStatus("checking");
@@ -60,11 +62,14 @@ export function useConnectivity() {
 
     const interval = setInterval(async () => {
       const reachable = await checkConnection(10_000);
-      updateStatus(reachable ? "connected" : "blocked");
+      applyResult(reachable);
     }, CHECK_INTERVAL);
 
     const handleOnline = () => runCheck();
-    const handleOffline = () => updateStatus("blocked");
+    const handleOffline = () => {
+      wasBlockedRef.current = true;
+      setStatus("blocked");
+    };
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
@@ -73,7 +78,7 @@ export function useConnectivity() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [runCheck, checkConnection, updateStatus]);
+  }, [runCheck, checkConnection, applyResult]);
 
   return { status, retry };
 }
