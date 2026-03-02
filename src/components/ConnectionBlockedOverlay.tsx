@@ -15,7 +15,7 @@ const ConnectionBlockedOverlay = ({ onRetry, isChecking }: Props) => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-background"
     >
       <div className="absolute top-1/4 -left-20 w-60 h-60 rounded-full bg-destructive/10 blur-[100px]" />
       <div className="absolute bottom-1/4 -right-20 w-60 h-60 rounded-full bg-primary/5 blur-[100px]" />
@@ -24,7 +24,7 @@ const ConnectionBlockedOverlay = ({ onRetry, isChecking }: Props) => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, type: "spring" }}
-        className="w-full max-w-sm space-y-6 relative"
+        className="w-full max-w-sm mx-auto space-y-6 relative min-h-screen flex flex-col justify-center py-10 px-6"
       >
         {/* Icon */}
         <div className="text-center space-y-3">
