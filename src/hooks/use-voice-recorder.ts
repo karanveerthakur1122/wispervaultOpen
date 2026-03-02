@@ -121,6 +121,9 @@ export function useVoiceRecorder(): VoiceRecorderState {
         return;
       }
 
+      // Capture duration before cleanup resets it
+      const capturedDuration = duration;
+
       recorder.onstop = () => {
         const mimeType = recorder.mimeType || "audio/webm";
         const ext = mimeType.includes("mp4") ? "m4a" : "webm";
@@ -132,14 +135,14 @@ export function useVoiceRecorder(): VoiceRecorderState {
         previewFileRef.current = file;
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
-        setRecordedDuration(duration);
+        setRecordedDuration(capturedDuration);
         cleanup();
         resolve();
       };
 
       recorder.stop();
     });
-  }, [cleanup]);
+  }, [cleanup, duration]);
 
   const discardPreview = useCallback(() => {
     clearPreview();

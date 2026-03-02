@@ -110,7 +110,10 @@ const ChatRoom = () => {
 
   const handleVoicePreviewSend = useCallback(async () => {
     const file = voiceRecorder.sendPreview();
-    if (!file) return;
+    if (!file) {
+      console.error("Voice preview send: no file available");
+      return;
+    }
     setIsSending(true);
     setSendingText("🎤 Voice message");
     setSendProgress({ stage: "encrypting", percent: 10 });
@@ -118,6 +121,8 @@ const ChatRoom = () => {
       await sendMessage("🎤 Voice message", file, replyTo || undefined, (stage, percent) => {
         setSendProgress({ stage, percent });
       });
+    } catch (err) {
+      console.error("Voice send failed:", err);
     } finally {
       setIsSending(false);
       setSendingText(null);
