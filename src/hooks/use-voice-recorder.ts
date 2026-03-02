@@ -48,7 +48,11 @@ export function useVoiceRecorder(): VoiceRecorderState {
   }, []);
 
   const clearPreview = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (previewUrl) {
+      // Delay revoking so audio/playback elements can finish using it
+      const urlToRevoke = previewUrl;
+      setTimeout(() => URL.revokeObjectURL(urlToRevoke), 500);
+    }
     setPreviewUrl(null);
     previewFileRef.current = null;
   }, [previewUrl]);
