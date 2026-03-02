@@ -6,6 +6,8 @@ import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
   Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2
 } from "lucide-react";
+import { useConnectivity } from "@/hooks/use-connectivity";
+import SignalBars from "@/components/SignalBars";
 import EmojiPicker from "@/components/EmojiPicker";
 import { haptic } from "@/lib/haptics";
 import { compressMedia } from "@/lib/media-compress";
@@ -54,6 +56,7 @@ const ChatRoom = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const voiceRecorder = useVoiceRecorder();
+  const { status: connStatus, latency: connLatency } = useConnectivity();
 
   const formatDuration = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0");
@@ -400,7 +403,10 @@ const ChatRoom = () => {
             ))}
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground font-mono tracking-wider">{roomId}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-foreground font-mono tracking-wider">{roomId}</p>
+              <SignalBars latency={connLatency} status={connStatus} size="sm" />
+            </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Users className="w-3 h-3" /> {onlineUsers.length} online
               {!isConnected && <span className="text-destructive ml-1">· connecting...</span>}
