@@ -357,7 +357,7 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="fixed inset-0">
+    <div className="fixed inset-0 overflow-hidden">
       {/* Screenshot black screen overlay */}
       {screenBlocked && (
         <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
