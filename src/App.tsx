@@ -19,7 +19,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const isMobile = useIsMobile();
-  const { status, retry } = useConnectivity();
+  const { status, retry, latency, serverRegion } = useConnectivity();
 
   // Show desktop blocker on non-mobile
   if (isMobile === false) {
@@ -38,7 +38,7 @@ const AppContent = () => {
 
   return (
     <>
-      <ConnectionStatusDot status={status} />
+      <ConnectionStatusDot status={status} latency={latency} serverRegion={serverRegion} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/create" element={<CreateRoom />} />
