@@ -1,22 +1,28 @@
 import { motion } from "framer-motion";
 import { WifiOff, RefreshCw, Shield, ChevronDown, ChevronUp, Smartphone, Monitor, Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { ConnectivityStatus } from "@/hooks/use-connectivity";
 
 interface Props {
   onRetry: () => Promise<void>;
+  checkingStatus?: ConnectivityStatus;
 }
 
-const ConnectionBlockedOverlay = ({ onRetry }: Props) => {
+const ConnectionBlockedOverlay = ({ onRetry, checkingStatus }: Props) => {
   const [showSteps, setShowSteps] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const retryCountRef = useRef(0);
 
   const handleRetry = async () => {
     setIsChecking(true);
+    retryCountRef.current++;
     await onRetry();
-    // Small delay so the user sees the checking state
-    setTimeout(() => setIsChecking(false), 500);
+    // Keep checking state visible briefly after retry completes
+    setTimeout(() => setIsChecking(false), 800);
   };
+
+  const checking = isChecking || checkingStatus === "checking";
 
   return (
     <motion.div
@@ -34,15 +40,29 @@ const ConnectionBlockedOverlay = ({ onRetry }: Props) => {
         className="w-full max-w-sm mx-auto space-y-6 relative min-h-screen flex flex-col justify-center py-10 px-6"
       >
         {/* Checking overlay */}
-        {isChecking && (
+        {checking && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl"
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md rounded-2xl"
           >
-            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-sm font-medium text-foreground">Checking connection...</p>
-            <p className="text-xs text-muted-foreground mt-1">This may take a few seconds</p>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 rounded-full border-2 border-muted-foreground/20 border-t-primary mb-5"
+            />
+            <p className="text-base font-semibold text-foreground">Checking connection</p>
+            <p className="text-xs text-muted-foreground mt-1.5">Reaching out to servers...</p>
+            <div className="flex gap-1 mt-4">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full bg-primary"
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                />
+              ))}
+            </div>
           </motion.div>
         )}
 
@@ -136,10 +156,10 @@ const ConnectionBlockedOverlay = ({ onRetry }: Props) => {
         {/* Retry Button */}
         <Button
           onClick={handleRetry}
-          disabled={isChecking}
+          disabled={checking}
           className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base gap-2 disabled:opacity-50"
         >
-          {isChecking ? (
+          {checking ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
               Checking connection...
