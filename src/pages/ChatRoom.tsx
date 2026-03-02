@@ -48,6 +48,7 @@ const ChatRoom = () => {
   const [refreshPull, setRefreshPull] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEndingChat, setIsEndingChat] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -352,6 +353,17 @@ const ChatRoom = () => {
     setShowContextMenu(null);
   }, []);
 
+  const handleMessagesScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollBottom(distanceFromBottom > 150);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   const username = roomConfig?.username ?? "";
 
   if (!roomConfig) return null;
@@ -478,6 +490,7 @@ const ChatRoom = () => {
         className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden p-4 space-y-3 overscroll-contain"
         style={{ top: pinnedMessage ? '92px' : '60px', bottom: '70px', WebkitOverflowScrolling: 'touch' }}
         onClick={clearOverlays}
+        onScroll={handleMessagesScroll}
       >
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full">
@@ -602,6 +615,26 @@ const ChatRoom = () => {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Scroll to bottom FAB */}
+      <AnimatePresence>
+        {showScrollBottom && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            transition={{ duration: 0.2 }}
+            onClick={scrollToBottom}
+            className="fixed right-4 z-[999] w-10 h-10 rounded-full glass border border-border/50 flex items-center justify-center text-primary shadow-lg active:scale-95 transition-transform"
+            style={{ bottom: '80px' }}
+            aria-label="Scroll to bottom"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12l7 7 7-7" />
+            </svg>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Fixed bottom area: file preview + reply + input */}
       <div className="fixed left-0 right-0 bottom-0 z-[1000]">
