@@ -1185,7 +1185,7 @@ const MessageBubble = memo(({
           onClick={(e) => { e.stopPropagation(); if (msg.readBy.length > 0) setShowReadBy(!showReadBy); }}
         >
           <p className="text-[10px] text-muted-foreground/40">
-            {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {new Date(msg.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
           </p>
           {msg.isOwn && (
             allRead ? (
