@@ -431,7 +431,7 @@ const ChatRoom = () => {
       {refreshPull > 0 && (
         <div
           className="fixed left-0 right-0 z-[1001] flex justify-center pointer-events-none transition-transform"
-          style={{ top: '60px', transform: `translateY(${Math.min(refreshPull * 0.5, 50)}px)`, opacity: Math.min(refreshPull / 70, 1) }}
+          style={{ top: `${headerHeight}px`, transform: `translateY(${Math.min(refreshPull * 0.5, 50)}px)`, opacity: Math.min(refreshPull / 70, 1) }}
         >
           <div className={`w-8 h-8 rounded-full bg-primary/20 backdrop-blur flex items-center justify-center ${isRefreshing ? 'animate-spin' : ''}`}>
             <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
