@@ -78,17 +78,17 @@ const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: bool
     };
   }, [objectUrl]);
 
-  if (loading) {
+  if (loading || !inView) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-muted/20">
-        <Loader2 className="w-5 h-5 text-muted-foreground/50 animate-spin" />
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-muted/20">
+        {loading ? <Loader2 className="w-5 h-5 text-muted-foreground/50 animate-spin" /> : null}
       </div>
     );
   }
 
   if (failed || !objectUrl) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-muted/20">
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-muted/20">
         {isVideo ? (
           <Video className="w-6 h-6 text-muted-foreground/40" />
         ) : (
