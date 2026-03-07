@@ -475,7 +475,7 @@ const MessageBubble = memo(({
         {!msg.isOwn && <p className="text-xs font-medium mb-1 ml-1" style={{ color: msg.color }}>{msg.username}</p>}
         <div
           className={`rounded-2xl px-4 py-2.5 text-sm relative ${
-            msg.isOwn ? `bg-primary text-primary-foreground rounded-br-md${msg.pending ? " opacity-70" : ""}` : "glass rounded-bl-md text-foreground"
+            msg.isOwn ? `bg-primary text-primary-foreground rounded-br-md${msg.pending ? " opacity-70" : ""}` : "bg-secondary/60 border border-border/30 rounded-bl-md text-foreground"
           } ${msg.isPinned ? "ring-1 ring-primary/30" : ""}`}
           onClick={(e) => {
             e.stopPropagation();
@@ -706,10 +706,18 @@ const ChatRoom = () => {
     overscan: 10,
   });
 
-  // Auto-scroll to bottom on new messages
+  // Smart auto-scroll: only scroll if user is near the bottom
+  const isNearBottomRef = useRef(true);
   const prevCountRef = useRef(0);
+
+  const updateNearBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
+  }, []);
+
   useEffect(() => {
-    if (timeline.length > prevCountRef.current) {
+    if (timeline.length > prevCountRef.current && isNearBottomRef.current) {
       requestAnimationFrame(() => {
         virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
       });
@@ -889,8 +897,9 @@ const ChatRoom = () => {
   const handleMessagesScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
+    updateNearBottom();
     setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 150);
-  }, []);
+  }, [updateNearBottom]);
 
   const scrollToBottom = useCallback(() => {
     virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
@@ -969,12 +978,10 @@ const ChatRoom = () => {
       {/* Virtualized Messages Area */}
       <div
         ref={scrollContainerRef}
-        className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden overscroll-contain"
+        className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden chat-scroll-container"
         style={{
           top: `${headerHeight + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`,
           bottom: '70px',
-          WebkitOverflowScrolling: 'touch',
-          willChange: 'scroll-position',
         }}
         onClick={clearOverlays}
         onScroll={handleMessagesScroll}
@@ -1003,7 +1010,7 @@ const ChatRoom = () => {
                   width: '100%',
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
-                className="px-4 py-1.5"
+                className="px-4 py-1.5 msg-bubble-wrap"
               >
                 {item.type === "system" ? (
                   <SystemEventBubble evt={item.data} />
