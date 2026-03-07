@@ -53,13 +53,19 @@ const JoinRoom = () => {
       // Check room exists and is active (don't select password_hash)
       const { data: room } = await supabase
         .from("rooms")
-        .select("room_id, user_count, active")
+        .select("room_id, user_count, active, is_locked")
         .eq("room_id", roomId)
         .eq("active", true)
         .maybeSingle();
 
       if (!room) {
         toast.error("Room not found or no longer active");
+        setJoining(false);
+        return;
+      }
+
+      if (room.is_locked) {
+        toast.error("Room is locked by the creator");
         setJoining(false);
         return;
       }

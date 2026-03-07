@@ -1035,6 +1035,8 @@ const ChatRoom = () => {
         isCreator={isCreator}
         currentUsername={username}
         onKickUser={kickUser}
+        isRoomLocked={isRoomLocked}
+        onToggleLock={toggleRoomLock}
         onMediaClick={(msg) => {
           if (msg.mediaUrl) {
             // We need to decrypt media to show in lightbox — trigger via lightbox with encrypted ref
