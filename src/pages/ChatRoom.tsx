@@ -431,6 +431,7 @@ const ChatRoom = () => {
       )}
       {/* Fixed Header */}
       <header
+        ref={headerRef}
         className="fixed top-0 left-0 right-0 z-[1000] glass border-b border-border/50 px-4 py-3 flex items-center justify-between select-none"
         style={{ backdropFilter: 'blur(20px)' }}
         onTouchStart={handleHeaderTouchStart}
