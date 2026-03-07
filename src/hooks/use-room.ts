@@ -545,8 +545,15 @@ export function useRoom(config: RoomConfig | null) {
         })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
-          // Broadcast join event once subscribed
           if (status === "SUBSCRIBED" && channel) {
+            // Track presence via Realtime Presence
+            await channel.track({
+              username: config.username,
+              color: config.avatarColor,
+              online: true,
+              joined_at: Date.now(),
+            });
+            // Broadcast join event
             channel.send({
               type: "broadcast",
               event: "user:join",
