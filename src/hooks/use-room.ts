@@ -180,6 +180,8 @@ export function useRoom(config: RoomConfig | null) {
   useEffect(() => {
     if (!config) return;
     let cancelled = false;
+    // Pre-warm the crypto key so first send is instant
+    preWarmCryptoKey(config.password, config.roomId);
 
     const setup = async () => {
       const { data: existingRoom } = await supabase
@@ -285,17 +287,7 @@ export function useRoom(config: RoomConfig | null) {
                 isPinned: msg.is_pinned, mediaUrl: msg.media_url, mediaType: msg.media_type,
                 reactions: [], readBy: [], replyTo,
               };
-              setMessages((prev) => {
-                // Replace optimistic message if exists, else append (dedupe)
-                const optimisticIdx = prev.findIndex((m) => m.pending && m.text === text && m.username === config.username);
-                if (optimisticIdx >= 0) {
-                  const updated = [...prev];
-                  updated[optimisticIdx] = newMsg;
-                  return updated;
-                }
-                if (prev.some((m) => m.id === msg.id)) return prev;
-                return [...prev, newMsg];
-              });
+              enqueueMessage(newMsg);
               if (msg.is_pinned) setPinnedMessage(newMsg);
               if (!newMsg.isOwn) {
                 showNotification(newMsg.username, {
