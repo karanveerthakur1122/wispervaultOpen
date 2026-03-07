@@ -22,15 +22,29 @@ const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: bool
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [inView, setInView] = useState(false);
   const mountedRef = useRef(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
+  // Intersection Observer for lazy loading
   useEffect(() => {
-    if (!msg.mediaUrl || !msg.mediaType || objectUrl || loading || failed) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); observer.disconnect(); } },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!inView || !msg.mediaUrl || !msg.mediaType || objectUrl || loading || failed) return;
     let cancelled = false;
     const decrypt = async () => {
       setLoading(true);
@@ -54,7 +68,7 @@ const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: bool
     };
     decrypt();
     return () => { cancelled = true; };
-  }, [msg.mediaUrl, msg.mediaType, objectUrl, loading, failed]);
+  }, [inView, msg.mediaUrl, msg.mediaType, objectUrl, loading, failed]);
 
   useEffect(() => {
     return () => {
