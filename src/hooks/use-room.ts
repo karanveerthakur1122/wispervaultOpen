@@ -448,43 +448,25 @@ export function useRoom(config: RoomConfig | null) {
             );
           }
         )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "presence", filter: `room_id=eq.${config.roomId}` },
-          async () => {
-            // Prune stale presence before fetching
-            const staleThreshold = new Date(Date.now() - 60 * 1000).toISOString();
-            await supabase
-              .from("presence")
-              .delete()
-              .eq("room_id", config.roomId)
-              .lt("last_seen", staleThreshold);
-
-            const { data } = await supabase
-              .from("presence")
-              .select("username, avatar_color")
-              .eq("room_id", config.roomId)
-              .eq("is_active", true);
-            if (data) {
-              const uniqueUsers = deduplicatePresence(data);
-              setOnlineUsers(uniqueUsers);
-
-              // Update room empty_since based on active user count
-              if (uniqueUsers.length === 0) {
-                await supabase
-                  .from("rooms")
-                  .update({ user_count: 0, empty_since: new Date().toISOString() })
-                  .eq("room_id", config.roomId)
-                  .is("empty_since", null);
-              } else {
-                await supabase
-                  .from("rooms")
-                  .update({ user_count: uniqueUsers.length, empty_since: null })
-                  .eq("room_id", config.roomId);
-              }
-            }
-          }
-        )
+        // Realtime Presence for online user tracking
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState<{ username: string; color: string }>();
+          const users = presenceStateToUsers(state);
+          setOnlineUsers(users);
+          // Sync room user_count
+          supabase.from("rooms").update({ 
+            user_count: users.length, 
+            empty_since: users.length === 0 ? new Date().toISOString() : null 
+          }).eq("room_id", config.roomId).then();
+        })
+        .on("presence", { event: "join" }, () => {
+          const state = channel.presenceState<{ username: string; color: string }>();
+          setOnlineUsers(presenceStateToUsers(state));
+        })
+        .on("presence", { event: "leave" }, () => {
+          const state = channel.presenceState<{ username: string; color: string }>();
+          setOnlineUsers(presenceStateToUsers(state));
+        })
         .on("broadcast", { event: "chat:end" }, () => {
           setChatEnded(true);
         })
