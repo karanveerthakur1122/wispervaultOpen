@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Offline — Phantom</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0c14;
+      color: #e2e8f0;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .glow-1 {
+      position: absolute;
+      top: 20%;
+      left: -15%;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(139, 92, 246, 0.08);
+      filter: blur(100px);
+    }
+    .glow-2 {
+      position: absolute;
+      bottom: 20%;
+      right: -15%;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.06);
+      filter: blur(100px);
+    }
+    .container {
+      position: relative;
+      text-align: center;
+      padding: 2rem;
+      max-width: 340px;
+    }
+    .icon-box {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(12px);
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .icon-box svg {
+      width: 40px;
+      height: 40px;
+      color: #94a3b8;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      font-size: 0.875rem;
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    button {
+      width: 100%;
+      height: 56px;
+      border-radius: 16px;
+      border: none;
+      background: #8b5cf6;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.2s;
+    }
+    button:active { opacity: 0.8; }
+    button svg { width: 20px; height: 20px; }
+    .hint {
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: rgba(100, 116, 139, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-1"></div>
+  <div class="glow-2"></div>
+  <div class="container">
+    <div class="icon-box">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0" />
+        <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+    </div>
+    <h1>You're Offline</h1>
+    <p>Phantom needs an internet connection to send and receive encrypted messages. Reconnect and try again.</p>
+    <button onclick="window.location.reload()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+      </svg>
+      Retry Connection
+    </button>
+    <p class="hint">Check your Wi-Fi or mobile data</p>
+  </div>
+</body>
+</html>
