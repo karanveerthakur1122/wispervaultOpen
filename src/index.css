@@ -99,6 +99,18 @@
     -webkit-user-drag: none;
     user-drag: none;
   }
+
+  .msg-bubble-wrap {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+  }
+
+  .chat-scroll-container {
+    transform: translateZ(0);
+    will-change: scroll-position;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
 }
 
 /* Block print / screen capture */

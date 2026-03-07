@@ -5,6 +5,11 @@ import { workerEncrypt, workerDecrypt, workerDecryptBatch, workerEncryptFile } f
 import type { Tables } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+// Pre-warm crypto key by triggering a dummy encrypt on the worker
+function preWarmCryptoKey(password: string, salt: string) {
+  workerEncrypt("warmup", password, salt).catch(() => {});
+}
+
 export interface Reaction {
   id: string;
   emoji: string;
@@ -91,6 +96,42 @@ export function useRoom(config: RoomConfig | null) {
   const presenceIdRef = useRef<string | null>(null);
   const messagesRef = useRef<DecryptedMessage[]>([]);
 
+  // rAF batching for incoming messages
+  const pendingMessagesRef = useRef<DecryptedMessage[]>([]);
+  const rafIdRef = useRef<number | null>(null);
+
+  const flushPendingMessages = useCallback(() => {
+    rafIdRef.current = null;
+    const batch = pendingMessagesRef.current;
+    if (batch.length === 0) return;
+    pendingMessagesRef.current = [];
+    setMessages((prev) => {
+      let next = prev;
+      for (const newMsg of batch) {
+        // Dedupe
+        if (next.some((m) => m.id === newMsg.id)) continue;
+        // Replace optimistic
+        const optimisticIdx = next.findIndex(
+          (m) => m.pending && m.text === newMsg.text && m.username === newMsg.username
+        );
+        if (optimisticIdx >= 0) {
+          next = [...next];
+          next[optimisticIdx] = newMsg;
+        } else {
+          next = [...next, newMsg];
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const enqueueMessage = useCallback((msg: DecryptedMessage) => {
+    pendingMessagesRef.current.push(msg);
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(flushPendingMessages);
+    }
+  }, [flushPendingMessages]);
+
   useEffect(() => {
     if (!config) return;
     if ("Notification" in window && Notification.permission === "default") {
@@ -139,6 +180,8 @@ export function useRoom(config: RoomConfig | null) {
   useEffect(() => {
     if (!config) return;
     let cancelled = false;
+    // Pre-warm the crypto key so first send is instant
+    preWarmCryptoKey(config.password, config.roomId);
 
     const setup = async () => {
       const { data: existingRoom } = await supabase
@@ -244,17 +287,7 @@ export function useRoom(config: RoomConfig | null) {
                 isPinned: msg.is_pinned, mediaUrl: msg.media_url, mediaType: msg.media_type,
                 reactions: [], readBy: [], replyTo,
               };
-              setMessages((prev) => {
-                // Replace optimistic message if exists, else append (dedupe)
-                const optimisticIdx = prev.findIndex((m) => m.pending && m.text === text && m.username === config.username);
-                if (optimisticIdx >= 0) {
-                  const updated = [...prev];
-                  updated[optimisticIdx] = newMsg;
-                  return updated;
-                }
-                if (prev.some((m) => m.id === msg.id)) return prev;
-                return [...prev, newMsg];
-              });
+              enqueueMessage(newMsg);
               if (msg.is_pinned) setPinnedMessage(newMsg);
               if (!newMsg.isOwn) {
                 showNotification(newMsg.username, {
@@ -414,6 +447,7 @@ export function useRoom(config: RoomConfig | null) {
     setup();
     return () => {
       cancelled = true;
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
