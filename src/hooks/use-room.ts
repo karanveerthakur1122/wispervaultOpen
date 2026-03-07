@@ -5,6 +5,11 @@ import { workerEncrypt, workerDecrypt, workerDecryptBatch, workerEncryptFile } f
 import type { Tables } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+// Pre-warm crypto key by triggering a dummy encrypt on the worker
+function preWarmCryptoKey(password: string, salt: string) {
+  workerEncrypt("warmup", password, salt).catch(() => {});
+}
+
 export interface Reaction {
   id: string;
   emoji: string;
@@ -90,6 +95,42 @@ export function useRoom(config: RoomConfig | null) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
   const messagesRef = useRef<DecryptedMessage[]>([]);
+
+  // rAF batching for incoming messages
+  const pendingMessagesRef = useRef<DecryptedMessage[]>([]);
+  const rafIdRef = useRef<number | null>(null);
+
+  const flushPendingMessages = useCallback(() => {
+    rafIdRef.current = null;
+    const batch = pendingMessagesRef.current;
+    if (batch.length === 0) return;
+    pendingMessagesRef.current = [];
+    setMessages((prev) => {
+      let next = prev;
+      for (const newMsg of batch) {
+        // Dedupe
+        if (next.some((m) => m.id === newMsg.id)) continue;
+        // Replace optimistic
+        const optimisticIdx = next.findIndex(
+          (m) => m.pending && m.text === newMsg.text && m.username === newMsg.username
+        );
+        if (optimisticIdx >= 0) {
+          next = [...next];
+          next[optimisticIdx] = newMsg;
+        } else {
+          next = [...next, newMsg];
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const enqueueMessage = useCallback((msg: DecryptedMessage) => {
+    pendingMessagesRef.current.push(msg);
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(flushPendingMessages);
+    }
+  }, [flushPendingMessages]);
 
   useEffect(() => {
     if (!config) return;
