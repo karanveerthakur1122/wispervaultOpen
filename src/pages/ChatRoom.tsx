@@ -44,7 +44,7 @@ const ChatRoom = () => {
   const [sendingText, setSendingText] = useState<string | null>(null);
   const [sendingFilePreview, setSendingFilePreview] = useState<string | null>(null);
   const [sendProgress, setSendProgress] = useState<{ stage: string; percent: number } | null>(null);
-  const [lightboxData, setLightboxData] = useState<{ url: string; messageId: string } | null>(null);
+  const [lightboxData, setLightboxData] = useState<{ url: string; messageId: string; mediaType?: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [refreshPull, setRefreshPull] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -607,7 +607,7 @@ const ChatRoom = () => {
                 onlineUserCount={onlineUsers.length}
                 onReply={handleReply}
                 onScrollToMessage={scrollToMessage}
-                onLightbox={(url, messageId) => setLightboxData({ url, messageId })}
+                onLightbox={(url, messageId, mediaType) => setLightboxData({ url, messageId, mediaType })}
               />
             );
           });
@@ -922,7 +922,8 @@ const ChatRoom = () => {
                 if (window.confirm("Saving this media will notify all users in the room. Continue?")) {
                   const a = document.createElement("a");
                   a.href = lightboxData.url;
-                  a.download = `media-${Date.now()}.jpg`;
+                  const ext = lightboxData.mediaType?.startsWith("video/") ? "mp4" : lightboxData.mediaType?.startsWith("audio/") ? "webm" : "jpg";
+                  a.download = `media-${Date.now()}.${ext}`;
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);
@@ -956,12 +957,35 @@ const ChatRoom = () => {
               <X className="w-5 h-5" />
             </button>
           </div>
-          <img
-            src={lightboxData.url}
-            alt="Full size"
-            className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {lightboxData.mediaType?.startsWith("video/") ? (
+            <video
+              src={lightboxData.url}
+              controls
+              controlsList="nodownload"
+              disablePictureInPicture
+              autoPlay
+              className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+          ) : lightboxData.mediaType?.startsWith("audio/") ? (
+            <div className="glass rounded-2xl p-6 w-[90vw] max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Mic className="w-8 h-8 text-primary" />
+                </div>
+              </div>
+              <p className="text-center text-sm text-white/70 mb-4">Voice Note</p>
+              <audio src={lightboxData.url} controls controlsList="nodownload" className="w-full" autoPlay />
+            </div>
+          ) : (
+            <img
+              src={lightboxData.url}
+              alt="Full size"
+              className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>,
         document.body
       )}
@@ -992,6 +1016,17 @@ const ChatRoom = () => {
         isCreator={isCreator}
         currentUsername={username}
         onKickUser={kickUser}
+        onMediaClick={(msg) => {
+          if (msg.mediaUrl) {
+            // We need to decrypt media to show in lightbox — trigger via lightbox with encrypted ref
+            setShowRoomInfo(false);
+            // Find the message bubble's decrypted URL by scrolling to it
+            const el = document.querySelector(`[data-msg-id="${msg.id}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }
+        }}
       />
     </div>
   );
@@ -1014,7 +1049,7 @@ interface MessageBubbleProps {
   onlineUserCount: number;
   onReply: (msg: DecryptedMessage) => void;
   onScrollToMessage: (msgId: string) => void;
-  onLightbox: (url: string, messageId: string) => void;
+  onLightbox: (url: string, messageId: string, mediaType?: string) => void;
 }
 
 const MessageBubble = memo(({
@@ -1253,16 +1288,31 @@ const MessageBubble = memo(({
             <div className="mb-2">
               {mediaObjectUrl ? (
                 msg.mediaType.startsWith("image/") ? (
-                  <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id); }}>
+                  <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id, msg.mediaType!); }}>
                     <img src={mediaObjectUrl} alt="Encrypted media" className="rounded-lg max-w-full" />
                     <div className="absolute inset-0 bg-black/0 group-active:bg-black/20 rounded-lg transition-colors flex items-center justify-center">
                       <ZoomIn className="w-6 h-6 text-white opacity-0 group-active:opacity-80 transition-opacity" />
                     </div>
                   </div>
                 ) : msg.mediaType.startsWith("video/") ? (
-                  <video src={mediaObjectUrl} controls className="rounded-lg max-w-full" />
+                  <div
+                    className="relative cursor-pointer group"
+                    onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id, msg.mediaType!); }}
+                  >
+                    <video src={mediaObjectUrl} className="rounded-lg max-w-full" muted preload="metadata" />
+                    <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center group-active:bg-black/50 transition-colors">
+                      <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                        <Play className="w-6 h-6 text-white ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
                 ) : msg.mediaType.startsWith("audio/") ? (
-                  <PlaybackWaveform src={mediaObjectUrl} isOwn={msg.isOwn} />
+                  <div
+                    className="cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id, msg.mediaType!); }}
+                  >
+                    <PlaybackWaveform src={mediaObjectUrl} isOwn={msg.isOwn} />
+                  </div>
                 ) : (
                   <a href={mediaObjectUrl} download className="text-primary underline text-xs">Download file</a>
                 )
