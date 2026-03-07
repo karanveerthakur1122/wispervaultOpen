@@ -65,6 +65,10 @@ const Home = () => {
                 localStorage.removeItem(key);
                 const updated = removeRecentRoom(session.roomId);
                 setRecentRooms(updated);
+                toast("Room expired", {
+                  description: `Room ${session.roomId} no longer exists and was removed.`,
+                  duration: 4000,
+                });
               }
             }
           } catch {}
