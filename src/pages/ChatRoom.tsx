@@ -50,6 +50,8 @@ const ChatRoom = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEndingChat, setIsEndingChat] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(80);
   const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
