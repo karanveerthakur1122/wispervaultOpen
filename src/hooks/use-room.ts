@@ -39,17 +39,6 @@ interface RoomConfig {
   isCreator?: boolean;
 }
 
-/** Deduplicate presence rows by username */
-function deduplicatePresence(rows: Array<{ username: string; avatar_color: string }>) {
-  const seen = new Map<string, { username: string; color: string }>();
-  for (const p of rows) {
-    if (!seen.has(p.username)) {
-      seen.set(p.username, { username: p.username, color: p.avatar_color });
-    }
-  }
-  return Array.from(seen.values());
-}
-
 /** Extract online users from Realtime Presence state */
 function presenceStateToUsers(state: Record<string, Array<{ username: string; color: string }>>): Array<{ username: string; color: string }> {
   const seen = new Map<string, { username: string; color: string }>();
