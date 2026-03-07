@@ -44,17 +44,17 @@ const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: bool
   }, []);
 
   useEffect(() => {
-    if (!inView || !msg.mediaUrl || !msg.mediaType || objectUrl || loading || failed) return;
+    if (!inView || !msg.mediaUrl || !msg.mediaType || objectUrl || failed) return;
     let cancelled = false;
+    setLoading(true);
     const decrypt = async () => {
-      setLoading(true);
       try {
         const parsed = JSON.parse(msg.mediaUrl!);
         const { data } = await supabase.storage.from("encrypted-media").download(parsed.path);
-        if (!data || cancelled) { if (!cancelled) setLoading(false); return; }
+        if (!data || cancelled) return;
         const roomId = window.location.pathname.split("/").pop();
         const stored = localStorage.getItem(`room_${roomId}`);
-        if (!stored) { if (!cancelled) { setFailed(true); setLoading(false); } return; }
+        if (!stored) { if (!cancelled) setFailed(true); return; }
         const { password, roomId: rId } = JSON.parse(stored);
         const key = await deriveKey(password, rId);
         const decrypted = await decryptFile(await data.arrayBuffer(), parsed.iv, key, msg.mediaType!);
@@ -69,7 +69,7 @@ const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: bool
     };
     decrypt();
     return () => { cancelled = true; };
-  }, [inView, msg.mediaUrl, msg.mediaType, objectUrl, loading, failed]);
+  }, [inView, msg.mediaUrl, msg.mediaType, objectUrl, failed]);
 
   useEffect(() => {
     return () => {
