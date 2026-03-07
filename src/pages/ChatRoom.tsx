@@ -717,6 +717,17 @@ const ChatRoom = () => {
   }, []);
 
   const [newMsgCount, setNewMsgCount] = useState(0);
+  const hasInitialScrolled = useRef(false);
+
+  // Initial scroll to bottom once messages load
+  useEffect(() => {
+    if (timeline.length > 0 && !hasInitialScrolled.current) {
+      hasInitialScrolled.current = true;
+      requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(timeline.length - 1, { align: 'end' });
+      });
+    }
+  }, [timeline.length]);
 
   useEffect(() => {
     if (timeline.length > prevCountRef.current) {
