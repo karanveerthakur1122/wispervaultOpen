@@ -447,6 +447,7 @@ export function useRoom(config: RoomConfig | null) {
     setup();
     return () => {
       cancelled = true;
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
