@@ -536,8 +536,8 @@ const ChatRoom = () => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-            style={{ top: 0, position: 'relative' }}
+            className="fixed left-0 right-0 z-[999] overflow-hidden"
+            style={{ top: `${headerHeight}px` }}
           >
             <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-destructive/10 border-b border-destructive/20 backdrop-blur-sm">
               <WifiOff className="w-3 h-3 text-destructive" />
