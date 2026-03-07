@@ -1015,6 +1015,17 @@ const ChatRoom = () => {
         isCreator={isCreator}
         currentUsername={username}
         onKickUser={kickUser}
+        onMediaClick={(msg) => {
+          if (msg.mediaUrl) {
+            // We need to decrypt media to show in lightbox — trigger via lightbox with encrypted ref
+            setShowRoomInfo(false);
+            // Find the message bubble's decrypted URL by scrolling to it
+            const el = document.querySelector(`[data-msg-id="${msg.id}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }
+        }}
       />
     </div>
   );
