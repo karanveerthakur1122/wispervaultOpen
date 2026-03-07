@@ -2,8 +2,9 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
-  Circle, UserX, X, Lock, Unlock, Play, Loader2
+  Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -211,6 +212,25 @@ const RoomInfoPanel = ({
           </header>
 
           <div className="p-4 space-y-6">
+            {/* Invite Button */}
+            <section>
+              <Button
+                variant="outline"
+                className="w-full rounded-xl gap-2 border-border/50 text-foreground"
+                onClick={() => {
+                  const link = `${window.location.origin}/join/${roomId}`;
+                  navigator.clipboard.writeText(link).then(() => {
+                    toast({ title: "Link copied!", description: "Share this link to invite others." });
+                  }).catch(() => {
+                    toast({ title: "Copy failed", description: link, variant: "destructive" });
+                  });
+                }}
+              >
+                <Share2 className="w-4 h-4" />
+                Copy Invite Link
+              </Button>
+            </section>
+
             {/* Lock Room — creator only */}
             {isCreator && (
               <section className="glass rounded-xl px-4 py-3 flex items-center justify-between">
