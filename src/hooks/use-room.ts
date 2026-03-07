@@ -534,9 +534,18 @@ export function useRoom(config: RoomConfig | null) {
         .on("broadcast", { event: "user:kick" }, (payload) => {
           const { username: kickedUser } = payload.payload as { username: string; by: string };
           if (kickedUser === config.username) {
-            // We got kicked — leave the room
+            // We got kicked — clear presence ref so heartbeat stops, then leave
+            presenceIdRef.current = null;
             localStorage.removeItem(`room_${config.roomId}`);
             setChatEnded(true);
+          } else {
+            // Another user was kicked — immediately remove from local online list
+            setOnlineUsers((prev) => prev.filter((u) => u.username !== kickedUser));
+            // Add a "leave" system event for the kicked user
+            setSystemEvents((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "leave", username: kickedUser, color: "", timestamp: Date.now() },
+            ]);
           }
         })
         .subscribe(async (status) => {
@@ -830,13 +839,16 @@ export function useRoom(config: RoomConfig | null) {
   useEffect(() => {
     if (!presenceIdRef.current || !config) return;
     const interval = setInterval(() => {
-      if (presenceIdRef.current) {
-        supabase
-          .from("presence")
-          .update({ last_seen: new Date().toISOString() })
-          .eq("id", presenceIdRef.current)
-          .then();
+      // Stop heartbeat if presence was cleared (e.g. kicked)
+      if (!presenceIdRef.current) {
+        clearInterval(interval);
+        return;
       }
+      supabase
+        .from("presence")
+        .update({ last_seen: new Date().toISOString() })
+        .eq("id", presenceIdRef.current)
+        .then();
     }, 20000);
     return () => clearInterval(interval);
   }, [isConnected, config]);
@@ -929,19 +941,34 @@ export function useRoom(config: RoomConfig | null) {
 
   const kickUser = useCallback(async (targetUsername: string) => {
     if (!config || !channelRef.current || !config.isCreator) return;
+    
+    // Find the user's color for the system event
+    const targetUser = onlineUsers.find((u) => u.username === targetUsername);
+    const targetColor = targetUser?.color || "";
+    
     // Broadcast kick event
     channelRef.current.send({
       type: "broadcast",
       event: "user:kick",
       payload: { username: targetUsername, by: config.username },
     });
-    // Remove their presence
+    
+    // Remove their presence from DB
     await supabase
       .from("presence")
       .delete()
       .eq("room_id", config.roomId)
       .eq("username", targetUsername);
-  }, [config]);
+    
+    // Immediately update local online users list
+    setOnlineUsers((prev) => prev.filter((u) => u.username !== targetUsername));
+    
+    // Add system event locally for admin
+    setSystemEvents((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), type: "leave", username: targetUsername, color: targetColor, timestamp: Date.now() },
+    ]);
+  }, [config, onlineUsers]);
 
   return {
     messages,
