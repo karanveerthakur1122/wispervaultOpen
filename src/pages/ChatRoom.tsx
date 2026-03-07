@@ -551,7 +551,7 @@ const ChatRoom = () => {
       {pinnedMessage && (
         <div
           className="fixed left-0 right-0 z-[998] glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
-          style={{ top: connStatus === "blocked" ? '88px' : '60px', backdropFilter: 'blur(20px)' }}
+          style={{ top: connStatus === "blocked" ? `${headerHeight + 28}px` : `${headerHeight}px`, backdropFilter: 'blur(20px)' }}
           onClick={() => scrollToMessage(pinnedMessage.id)}
         >
           <Pin className="w-3 h-3 text-primary rotate-45" />
