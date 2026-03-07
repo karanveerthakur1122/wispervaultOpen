@@ -922,7 +922,8 @@ const ChatRoom = () => {
                 if (window.confirm("Saving this media will notify all users in the room. Continue?")) {
                   const a = document.createElement("a");
                   a.href = lightboxData.url;
-                  a.download = `media-${Date.now()}.jpg`;
+                  const ext = lightboxData.mediaType?.startsWith("video/") ? "mp4" : lightboxData.mediaType?.startsWith("audio/") ? "webm" : "jpg";
+                  a.download = `media-${Date.now()}.${ext}`;
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);
