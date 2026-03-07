@@ -919,6 +919,22 @@ export function useRoom(config: RoomConfig | null) {
     ]);
   }, [config]);
 
+  const kickUser = useCallback(async (targetUsername: string) => {
+    if (!config || !channelRef.current || !config.isCreator) return;
+    // Broadcast kick event
+    channelRef.current.send({
+      type: "broadcast",
+      event: "user:kick",
+      payload: { username: targetUsername, by: config.username },
+    });
+    // Remove their presence
+    await supabase
+      .from("presence")
+      .delete()
+      .eq("room_id", config.roomId)
+      .eq("username", targetUsername);
+  }, [config]);
+
   return {
     messages,
     onlineUsers,
@@ -940,5 +956,6 @@ export function useRoom(config: RoomConfig | null) {
     recordMediaView,
     reportScreenshot,
     broadcastMediaSaved,
+    kickUser,
   };
 }
