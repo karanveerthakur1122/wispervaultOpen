@@ -50,6 +50,8 @@ const ChatRoom = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEndingChat, setIsEndingChat] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(80);
   const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -350,6 +352,18 @@ const ChatRoom = () => {
     // Do NOT close or refocus input (which triggers keyboard)
   }, []);
 
+  // Measure header height dynamically
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      setHeaderHeight(el.offsetHeight);
+    });
+    setHeaderHeight(el.offsetHeight);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Pull-to-refresh from header
   const handleHeaderTouchStart = useCallback((e: React.TouchEvent) => {
     headerTouchRef.current = { y: e.touches[0].clientY };
@@ -417,7 +431,7 @@ const ChatRoom = () => {
       {refreshPull > 0 && (
         <div
           className="fixed left-0 right-0 z-[1001] flex justify-center pointer-events-none transition-transform"
-          style={{ top: '60px', transform: `translateY(${Math.min(refreshPull * 0.5, 50)}px)`, opacity: Math.min(refreshPull / 70, 1) }}
+          style={{ top: `${headerHeight}px`, transform: `translateY(${Math.min(refreshPull * 0.5, 50)}px)`, opacity: Math.min(refreshPull / 70, 1) }}
         >
           <div className={`w-8 h-8 rounded-full bg-primary/20 backdrop-blur flex items-center justify-center ${isRefreshing ? 'animate-spin' : ''}`}>
             <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -429,6 +443,7 @@ const ChatRoom = () => {
       )}
       {/* Fixed Header */}
       <header
+        ref={headerRef}
         className="fixed top-0 left-0 right-0 z-[1000] glass border-b border-border/50 px-4 py-3 flex items-center justify-between select-none"
         style={{ backdropFilter: 'blur(20px)' }}
         onTouchStart={handleHeaderTouchStart}
@@ -522,7 +537,7 @@ const ChatRoom = () => {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed left-0 right-0 z-[999] overflow-hidden"
-            style={{ top: '60px' }}
+            style={{ top: `${headerHeight}px` }}
           >
             <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-destructive/10 border-b border-destructive/20 backdrop-blur-sm">
               <WifiOff className="w-3 h-3 text-destructive" />
@@ -536,7 +551,7 @@ const ChatRoom = () => {
       {pinnedMessage && (
         <div
           className="fixed left-0 right-0 z-[998] glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
-          style={{ top: connStatus === "blocked" ? '88px' : '60px', backdropFilter: 'blur(20px)' }}
+          style={{ top: connStatus === "blocked" ? `${headerHeight + 28}px` : `${headerHeight}px`, backdropFilter: 'blur(20px)' }}
           onClick={() => scrollToMessage(pinnedMessage.id)}
         >
           <Pin className="w-3 h-3 text-primary rotate-45" />
@@ -551,7 +566,7 @@ const ChatRoom = () => {
       <div
         ref={scrollContainerRef}
         className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden p-4 space-y-3 overscroll-contain"
-        style={{ top: `${60 + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`, bottom: '70px', WebkitOverflowScrolling: 'touch' }}
+        style={{ top: `${headerHeight + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`, bottom: '70px', WebkitOverflowScrolling: 'touch' }}
         onClick={clearOverlays}
         onScroll={handleMessagesScroll}
       >
