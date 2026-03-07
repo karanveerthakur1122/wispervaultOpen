@@ -92,7 +92,7 @@ self.onmessage = async (e: MessageEvent) => {
       const key = await getKey(password, salt);
       const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
       const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, fileData);
-      self.postMessage({ id, result: { encryptedData: ciphertext, iv: bufferToBase64(iv.buffer) } }, [ciphertext]);
+      (self as unknown as { postMessage(msg: any, transfer: Transferable[]): void }).postMessage({ id, result: { encryptedData: ciphertext, iv: bufferToBase64(iv.buffer) } }, [ciphertext]);
 
     } else if (type === 'decryptFile') {
       const { encryptedData, iv, password, salt } = payload as { encryptedData: ArrayBuffer; iv: string; password: string; salt: string };
@@ -100,7 +100,7 @@ self.onmessage = async (e: MessageEvent) => {
       const plaintext = await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: base64ToBuffer(iv) }, key, encryptedData
       );
-      self.postMessage({ id, result: plaintext }, [plaintext]);
+      (self as unknown as { postMessage(msg: any, transfer: Transferable[]): void }).postMessage({ id, result: plaintext }, [plaintext]);
     }
   } catch (err: any) {
     self.postMessage({ id, error: err?.message || 'Worker error' });
