@@ -80,8 +80,10 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser,
   } = useRoom(roomConfig);
+
+  const [showRoomInfo, setShowRoomInfo] = useState(false);
 
   // Live elapsed timer
   const [elapsed, setElapsed] = useState("");
