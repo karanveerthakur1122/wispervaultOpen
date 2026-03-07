@@ -84,6 +84,7 @@ export function useRoom(config: RoomConfig | null) {
   const [pinnedMessage, setPinnedMessage] = useState<DecryptedMessage | null>(null);
   const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
   const [roomCreatedAt, setRoomCreatedAt] = useState<string | null>(null);
+  const [isRoomLocked, setIsRoomLocked] = useState(false);
   const keyRef = useRef<CryptoKey | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
@@ -162,7 +163,7 @@ export function useRoom(config: RoomConfig | null) {
     const setup = async () => {
       const { data: existingRoom } = await supabase
         .from("rooms")
-        .select("room_id, user_count, active, created_at")
+        .select("room_id, user_count, active, created_at, is_locked")
         .eq("room_id", config.roomId)
         .eq("active", true)
         .maybeSingle();
@@ -177,6 +178,7 @@ export function useRoom(config: RoomConfig | null) {
         if (newRoom) setRoomCreatedAt(newRoom.created_at);
       } else {
         setRoomCreatedAt(existingRoom.created_at);
+        setIsRoomLocked(existingRoom.is_locked ?? false);
         // Use actual active presence count instead of stale user_count
         const { count } = await supabase
           .from("presence")
@@ -547,6 +549,10 @@ export function useRoom(config: RoomConfig | null) {
               { id: crypto.randomUUID(), type: "leave", username: kickedUser, color: "", timestamp: Date.now() },
             ]);
           }
+        })
+        .on("broadcast", { event: "room:lock" }, (payload) => {
+          const { locked } = payload.payload as { locked: boolean };
+          setIsRoomLocked(locked);
         })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
@@ -970,6 +976,24 @@ export function useRoom(config: RoomConfig | null) {
     ]);
   }, [config, onlineUsers]);
 
+  const toggleRoomLock = useCallback(async () => {
+    if (!config || !channelRef.current || !config.isCreator) return;
+    const newLocked = !isRoomLocked;
+    setIsRoomLocked(newLocked);
+    
+    await supabase
+      .from("rooms")
+      .update({ is_locked: newLocked })
+      .eq("room_id", config.roomId);
+    
+    // Broadcast to all clients
+    channelRef.current.send({
+      type: "broadcast",
+      event: "room:lock",
+      payload: { locked: newLocked },
+    });
+  }, [config, isRoomLocked]);
+
   return {
     messages,
     onlineUsers,
@@ -979,6 +1003,7 @@ export function useRoom(config: RoomConfig | null) {
     pinnedMessage,
     systemEvents,
     roomCreatedAt,
+    isRoomLocked,
     sendMessage,
     sendTyping,
     endChat,
@@ -992,5 +1017,6 @@ export function useRoom(config: RoomConfig | null) {
     reportScreenshot,
     broadcastMediaSaved,
     kickUser,
+    toggleRoomLock,
   };
 }

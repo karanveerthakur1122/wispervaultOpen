@@ -5,7 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock
 } from "lucide-react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
@@ -79,8 +79,8 @@ const ChatRoom = () => {
   }, [roomId, navigate]);
 
   const {
-    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser,
+    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock,
   } = useRoom(roomConfig);
 
   const [showRoomInfo, setShowRoomInfo] = useState(false);
@@ -1035,6 +1035,8 @@ const ChatRoom = () => {
         isCreator={isCreator}
         currentUsername={username}
         onKickUser={kickUser}
+        isRoomLocked={isRoomLocked}
+        onToggleLock={toggleRoomLock}
         onMediaClick={(msg) => {
           if (msg.mediaUrl) {
             // We need to decrypt media to show in lightbox — trigger via lightbox with encrypted ref

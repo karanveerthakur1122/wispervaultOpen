@@ -2,9 +2,10 @@ import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
-  Circle, UserX, X
+  Circle, UserX, X, Lock, Unlock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -24,10 +25,12 @@ interface Props {
   currentUsername: string;
   onKickUser: (username: string) => void;
   onMediaClick?: (msg: DecryptedMessage) => void;
+  isRoomLocked: boolean;
+  onToggleLock: () => void;
 }
 
 const RoomInfoPanel = ({
-  open, onClose, roomId, onlineUsers, messages, isCreator, currentUsername, onKickUser, onMediaClick,
+  open, onClose, roomId, onlineUsers, messages, isCreator, currentUsername, onKickUser, onMediaClick, isRoomLocked, onToggleLock,
 }: Props) => {
   const [mediaTab, setMediaTab] = useState<MediaTab>("photos");
   const [kickTarget, setKickTarget] = useState<string | null>(null);
@@ -91,6 +94,39 @@ const RoomInfoPanel = ({
           </header>
 
           <div className="p-4 space-y-6">
+            {/* Lock Room — creator only */}
+            {isCreator && (
+              <section className="glass rounded-xl px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {isRoomLocked ? (
+                    <Lock className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Unlock className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Lock Room</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {isRoomLocked ? "No one can join right now" : "Anyone with the link can join"}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={isRoomLocked}
+                  onCheckedChange={onToggleLock}
+                />
+              </section>
+            )}
+
+            {/* Locked indicator for non-creators */}
+            {!isCreator && isRoomLocked && (
+              <section className="glass rounded-xl px-4 py-3 flex items-center gap-3">
+                <Lock className="w-4 h-4 text-amber-400" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Room Locked</p>
+                  <p className="text-[11px] text-muted-foreground">The room creator has locked this room</p>
+                </div>
+              </section>
+            )}
             {/* Online Users Section */}
             <section className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
