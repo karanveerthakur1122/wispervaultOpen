@@ -51,10 +51,10 @@ const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: bool
       try {
         const parsed = JSON.parse(msg.mediaUrl!);
         const { data } = await supabase.storage.from("encrypted-media").download(parsed.path);
-        if (!data || cancelled) return;
+        if (!data || cancelled) { if (!cancelled) setLoading(false); return; }
         const roomId = window.location.pathname.split("/").pop();
         const stored = localStorage.getItem(`room_${roomId}`);
-        if (!stored) return;
+        if (!stored) { if (!cancelled) { setFailed(true); setLoading(false); } return; }
         const { password, roomId: rId } = JSON.parse(stored);
         const key = await deriveKey(password, rId);
         const decrypted = await decryptFile(await data.arrayBuffer(), parsed.iv, key, msg.mediaType!);
@@ -63,8 +63,9 @@ const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: bool
         }
       } catch {
         if (!cancelled) setFailed(true);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      if (!cancelled) setLoading(false);
     };
     decrypt();
     return () => { cancelled = true; };
