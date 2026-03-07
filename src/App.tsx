@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import DesktopBlocker from "@/components/DesktopBlocker";
-import ConnectionBlockedOverlay from "@/components/ConnectionBlockedOverlay";
 import ConnectionStatusDot from "@/components/ConnectionStatusDot";
 import PwaInstallBanner from "@/components/PwaInstallBanner";
 import Home from "./pages/Home";
@@ -20,24 +19,18 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const isMobile = useIsMobile();
-  const { status, retry, latency, serverRegion } = useConnectivity();
+  const { status, latency, serverRegion } = useConnectivity();
 
-  // Show desktop blocker on non-mobile
   if (isMobile === false) {
     return <DesktopBlocker />;
   }
 
-  // Wait for mobile detection only
   if (isMobile === undefined) {
     return null;
   }
 
   return (
     <>
-      {/* Show connection blocked overlay only when truly blocked (not on initial load) */}
-      {status === "blocked" && (
-        <ConnectionBlockedOverlay onRetry={retry} checkingStatus={status} />
-      )}
       <ConnectionStatusDot status={status} latency={latency} serverRegion={serverRegion} />
       <PwaInstallBanner />
       <Routes>
