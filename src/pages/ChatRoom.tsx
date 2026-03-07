@@ -566,7 +566,7 @@ const ChatRoom = () => {
       <div
         ref={scrollContainerRef}
         className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden p-4 space-y-3 overscroll-contain"
-        style={{ top: `${60 + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`, bottom: '70px', WebkitOverflowScrolling: 'touch' }}
+        style={{ top: `${headerHeight + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`, bottom: '70px', WebkitOverflowScrolling: 'touch' }}
         onClick={clearOverlays}
         onScroll={handleMessagesScroll}
       >
