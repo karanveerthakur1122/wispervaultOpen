@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
-  Circle, UserX, X, Lock, Unlock
+  Circle, UserX, X, Lock, Unlock, Play, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -11,9 +11,111 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { deriveKey, decryptFile } from "@/lib/crypto";
 import type { DecryptedMessage } from "@/hooks/use-room";
 
 type MediaTab = "photos" | "videos" | "voice";
+
+/** Decrypts and renders a thumbnail for encrypted media */
+const MediaThumbnail = ({ msg, isVideo }: { msg: DecryptedMessage; isVideo: boolean }) => {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!msg.mediaUrl || !msg.mediaType || objectUrl || loading || failed) return;
+    let cancelled = false;
+    const decrypt = async () => {
+      setLoading(true);
+      try {
+        const parsed = JSON.parse(msg.mediaUrl!);
+        const { data } = await supabase.storage.from("encrypted-media").download(parsed.path);
+        if (!data || cancelled) return;
+        const roomId = window.location.pathname.split("/").pop();
+        const stored = localStorage.getItem(`room_${roomId}`);
+        if (!stored) return;
+        const { password, roomId: rId } = JSON.parse(stored);
+        const key = await deriveKey(password, rId);
+        const decrypted = await decryptFile(await data.arrayBuffer(), parsed.iv, key, msg.mediaType!);
+        if (!cancelled && mountedRef.current) {
+          setObjectUrl(URL.createObjectURL(decrypted));
+        }
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+      if (!cancelled) setLoading(false);
+    };
+    decrypt();
+    return () => { cancelled = true; };
+  }, [msg.mediaUrl, msg.mediaType, objectUrl, loading, failed]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrl) {
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 500);
+      }
+    };
+  }, [objectUrl]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted/20">
+        <Loader2 className="w-5 h-5 text-muted-foreground/50 animate-spin" />
+      </div>
+    );
+  }
+
+  if (failed || !objectUrl) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted/20">
+        {isVideo ? (
+          <Video className="w-6 h-6 text-muted-foreground/40" />
+        ) : (
+          <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
+        )}
+      </div>
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <div className="relative w-full h-full bg-black">
+        <video
+          src={objectUrl}
+          className="w-full h-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+          onLoadedData={(e) => {
+            const v = e.currentTarget;
+            if (v.duration > 0.5) v.currentTime = 0.5;
+          }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center">
+            <Play className="w-4 h-4 text-foreground fill-foreground ml-0.5" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={objectUrl}
+      alt="Shared media"
+      className="w-full h-full object-cover"
+      loading="lazy"
+    />
+  );
+};
 
 interface Props {
   open: boolean;
@@ -160,9 +262,6 @@ const RoomInfoPanel = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* Show crown for creator — we compare if this user might be the creator.
-                          Since we don't track who created the room per-user in presence,
-                          the current user who is creator sees their own crown */}
                       {isCreator && user.username === currentUsername && (
                         <Crown className="w-4 h-4 text-amber-400" />
                       )}
@@ -226,7 +325,6 @@ const RoomInfoPanel = ({
                   </p>
                 </div>
               ) : mediaTab === "voice" ? (
-                /* Voice messages as list */
                 <div className="space-y-1.5">
                   {voiceMessages.map((msg) => (
                     <div
@@ -251,35 +349,25 @@ const RoomInfoPanel = ({
                   ))}
                 </div>
               ) : (
-                /* Photos/Videos as grid */
+                /* Photos/Videos grid with decrypted thumbnails */
                 <div className="grid grid-cols-3 gap-1.5">
                   {activeMedia.map((msg) => (
                     <div
                       key={msg.id}
                       onClick={() => onMediaClick?.(msg)}
-                      className="aspect-square rounded-xl overflow-hidden glass cursor-pointer active:scale-[0.96] transition-transform relative"
+                      className="aspect-square rounded-xl overflow-hidden cursor-pointer active:scale-[0.96] transition-transform relative group"
                     >
-                      <div className="w-full h-full flex items-center justify-center">
-                        {mediaTab === "videos" ? (
-                          <div className="text-center">
-                            <Video className="w-6 h-6 text-muted-foreground/50 mx-auto" />
-                            <p className="text-[9px] text-muted-foreground/50 mt-1">Video</p>
+                      <MediaThumbnail msg={msg} isVideo={mediaTab === "videos"} />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 pt-4">
+                        <div className="flex items-center gap-1">
+                          <div
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold shrink-0"
+                            style={{ backgroundColor: msg.color, color: "hsl(var(--background))" }}
+                          >
+                            {msg.username[0]?.toUpperCase()}
                           </div>
-                        ) : (
-                          <div className="text-center">
-                            <ImageIcon className="w-6 h-6 text-muted-foreground/50 mx-auto" />
-                            <p className="text-[9px] text-muted-foreground/50 mt-1">Photo</p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute bottom-1 left-1 right-1 flex items-center gap-1">
-                        <div
-                          className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold shrink-0"
-                          style={{ backgroundColor: msg.color, color: "hsl(var(--background))" }}
-                        >
-                          {msg.username[0]?.toUpperCase()}
+                          <p className="text-[8px] text-white/80 truncate">{msg.username}</p>
                         </div>
-                        <p className="text-[8px] text-muted-foreground truncate">{msg.username}</p>
                       </div>
                     </div>
                   ))}
