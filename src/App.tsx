@@ -85,6 +85,27 @@ const AppContent = () => {
         <Route path="/know-more" element={<KnowMore />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+
+      {/* Leave room confirmation on back button */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <AlertDialogContent className="glass border-border/50 max-w-[320px] rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Leave Room?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              You'll exit this chat room. You can rejoin later with the invite link.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl border-border/50">Stay</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmLeave}
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
