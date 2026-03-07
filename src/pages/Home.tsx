@@ -38,22 +38,39 @@ const Home = () => {
   const [checkingRoom, setCheckingRoom] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<{ roomId: string; password: string } | null>(null);
 
-  // Check for active room session (user pressed back)
+  // Check for active room session (user pressed back) — validate server-side first
   useEffect(() => {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith("room_")) {
-        try {
-          const session = JSON.parse(localStorage.getItem(key) || "");
-          if (session?.roomId && session?.password) {
-            setActiveSession({ roomId: session.roomId, password: session.password });
-            // Auto-redirect back to the room
-            navigate(`/room/${session.roomId}#key=${encodeURIComponent(session.password)}`, { replace: true });
-            return;
-          }
-        } catch {}
+    const checkActiveSession = async () => {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("room_")) {
+          try {
+            const session = JSON.parse(localStorage.getItem(key) || "");
+            if (session?.roomId && session?.password) {
+              // Validate room still exists on server before redirecting
+              const { data } = await supabase
+                .from("rooms")
+                .select("room_id")
+                .eq("room_id", session.roomId)
+                .eq("active", true)
+                .maybeSingle();
+
+              if (data) {
+                setActiveSession({ roomId: session.roomId, password: session.password });
+                navigate(`/room/${session.roomId}#key=${encodeURIComponent(session.password)}`, { replace: true });
+                return;
+              } else {
+                // Room deleted — clean up stale session
+                localStorage.removeItem(key);
+                const updated = removeRecentRoom(session.roomId);
+                setRecentRooms(updated);
+              }
+            }
+          } catch {}
+        }
       }
-    }
+    };
+    checkActiveSession();
   }, [navigate]);
 
   // Load and validate recent rooms on mount
