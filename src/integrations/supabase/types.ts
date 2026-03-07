@@ -224,6 +224,7 @@ export type Database = {
           created_at: string
           empty_since: string | null
           id: string
+          is_locked: boolean
           last_message_at: string | null
           password_hash: string | null
           room_id: string
@@ -234,6 +235,7 @@ export type Database = {
           created_at?: string
           empty_since?: string | null
           id?: string
+          is_locked?: boolean
           last_message_at?: string | null
           password_hash?: string | null
           room_id: string
@@ -244,6 +246,7 @@ export type Database = {
           created_at?: string
           empty_since?: string | null
           id?: string
+          is_locked?: boolean
           last_message_at?: string | null
           password_hash?: string | null
           room_id?: string
