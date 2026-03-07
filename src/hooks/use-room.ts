@@ -289,17 +289,7 @@ export function useRoom(config: RoomConfig | null) {
         }
       }
 
-      // Load online users (deduplicated by username)
-      const { data: presenceList } = await supabase
-        .from("presence")
-        .select("username, avatar_color")
-        .eq("room_id", config.roomId)
-        .eq("is_active", true);
-
-      if (presenceList && !cancelled) {
-        const uniqueUsers = deduplicatePresence(presenceList);
-        setOnlineUsers(uniqueUsers);
-      }
+      // Initial online users will be populated by Realtime Presence sync event
 
       // Subscribe to realtime
       const channel = supabase.channel(`room:${config.roomId}`);
