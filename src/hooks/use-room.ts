@@ -50,6 +50,19 @@ function deduplicatePresence(rows: Array<{ username: string; avatar_color: strin
   return Array.from(seen.values());
 }
 
+/** Extract online users from Realtime Presence state */
+function presenceStateToUsers(state: Record<string, Array<{ username: string; color: string }>>): Array<{ username: string; color: string }> {
+  const seen = new Map<string, { username: string; color: string }>();
+  for (const presences of Object.values(state)) {
+    for (const p of presences) {
+      if (p.username && !seen.has(p.username)) {
+        seen.set(p.username, { username: p.username, color: p.color });
+      }
+    }
+  }
+  return Array.from(seen.values());
+}
+
 const REPLY_PREFIX = "[reply:";
 
 /** Parse reply metadata from decrypted text. Format: [reply:msgId:username:preview]actualText */
