@@ -352,6 +352,18 @@ const ChatRoom = () => {
     // Do NOT close or refocus input (which triggers keyboard)
   }, []);
 
+  // Measure header height dynamically
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setHeaderHeight(entry.contentRect.height + 24); // include py-3 padding
+    });
+    setHeaderHeight(el.offsetHeight);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Pull-to-refresh from header
   const handleHeaderTouchStart = useCallback((e: React.TouchEvent) => {
     headerTouchRef.current = { y: e.touches[0].clientY };
