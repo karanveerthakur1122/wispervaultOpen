@@ -449,7 +449,9 @@ const ChatRoom = () => {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold text-foreground font-mono tracking-wider">{roomId}</p>
+              <button onClick={() => setShowRoomInfo(true)} className="text-sm font-semibold text-foreground font-mono tracking-wider hover:text-primary transition-colors active:scale-95">
+                {roomId}
+              </button>
               <SignalBars latency={connLatency} status={connStatus} size="sm" />
             </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
