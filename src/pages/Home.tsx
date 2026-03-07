@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, LogIn, Shield, Lock, Clock, X, ArrowRight, Globe, Github, Info } from "lucide-react";
+import { toast } from "sonner";
 import GlassCard from "@/components/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,10 @@ const Home = () => {
                 localStorage.removeItem(key);
                 const updated = removeRecentRoom(session.roomId);
                 setRecentRooms(updated);
+                toast("Room expired", {
+                  description: `Room ${session.roomId} no longer exists and was removed.`,
+                  duration: 4000,
+                });
               }
             }
           } catch {}
