@@ -3,14 +3,17 @@ import { toast } from "sonner";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const CHECK_INTERVAL = 30_000;
-const INITIAL_CHECK_TIMEOUT = 8_000;
 
 export type ConnectivityStatus = "checking" | "connected" | "blocked";
 
 export function useConnectivity() {
-  const [status, setStatus] = useState<ConnectivityStatus>("checking");
+  // Start as "connected" optimistically — avoids flash of offline on refresh
+  const [status, setStatus] = useState<ConnectivityStatus>(
+    navigator.onLine ? "connected" : "blocked"
+  );
   const [latency, setLatency] = useState<number | null>(null);
   const wasBlockedRef = useRef(false);
+  const hasEverConnectedRef = useRef(false);
 
   const checkConnection = useCallback(async (timeout = 8000): Promise<boolean> => {
     try {
@@ -40,42 +43,58 @@ export function useConnectivity() {
   const applyResult = useCallback((reachable: boolean) => {
     if (reachable) {
       if (wasBlockedRef.current) {
-        toast.success("Connection restored!", {
-          description: "You're back online. Everything should work normally now.",
-          duration: 4000,
+        toast.success("Back online", {
+          description: "Connection restored successfully.",
+          duration: 3000,
         });
       }
       wasBlockedRef.current = false;
+      hasEverConnectedRef.current = true;
       setStatus("connected");
     } else {
-      wasBlockedRef.current = true;
-      setStatus("blocked");
+      // Only show "blocked" if we've confirmed connectivity before or browser says offline
+      if (hasEverConnectedRef.current || !navigator.onLine) {
+        wasBlockedRef.current = true;
+        setStatus("blocked");
+      }
+      // On initial check failure, stay optimistic — might just be slow network on refresh
     }
   }, []);
 
   const runCheck = useCallback(async () => {
-    const reachable = await checkConnection(INITIAL_CHECK_TIMEOUT);
+    const reachable = await checkConnection(8000);
     applyResult(reachable);
+    // If initial check failed and we're still optimistic, retry once more
+    if (!reachable && !hasEverConnectedRef.current && navigator.onLine) {
+      const retry = await checkConnection(12000);
+      applyResult(retry);
+      if (!retry) {
+        // Truly unreachable — now mark blocked
+        wasBlockedRef.current = true;
+        setStatus("blocked");
+      }
+    }
   }, [checkConnection, applyResult]);
 
   const retry = useCallback(async () => {
     setStatus("checking");
 
-    // Try up to 3 times with increasing timeouts
     for (let attempt = 0; attempt < 3; attempt++) {
-      const timeout = 6000 + attempt * 3000; // 6s, 9s, 12s
+      const timeout = 6000 + attempt * 3000;
       const reachable = await checkConnection(timeout);
       if (reachable) {
         applyResult(true);
         return;
       }
-      // Small delay between retries
       if (attempt < 2) {
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
 
     applyResult(false);
+    // Force blocked after retries exhausted
+    wasBlockedRef.current = true;
+    setStatus("blocked");
   }, [checkConnection, applyResult]);
 
   useEffect(() => {
@@ -101,7 +120,6 @@ export function useConnectivity() {
     };
   }, [runCheck, checkConnection, applyResult]);
 
-  // Derive server region from Supabase URL
   const serverRegion = (() => {
     try {
       const ref = new URL(SUPABASE_URL).hostname.split(".")[0];
