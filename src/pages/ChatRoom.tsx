@@ -34,8 +34,8 @@ interface ChatHeaderProps {
   roomId: string;
   onlineUsers: Array<{ username: string; color: string }>;
   isConnected: boolean;
-  connLatency: number;
-  connStatus: string;
+  connLatency: number | null;
+  connStatus: ConnectivityStatus;
   isCreator: boolean;
   roomCreatedAt: string | null;
   isRoomLocked: boolean;
