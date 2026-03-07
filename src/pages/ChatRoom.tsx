@@ -716,11 +716,18 @@ const ChatRoom = () => {
     isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
   }, []);
 
+  const [newMsgCount, setNewMsgCount] = useState(0);
+
   useEffect(() => {
-    if (timeline.length > prevCountRef.current && isNearBottomRef.current) {
-      requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
-      });
+    if (timeline.length > prevCountRef.current) {
+      if (isNearBottomRef.current) {
+        requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
+        });
+        setNewMsgCount(0);
+      } else {
+        setNewMsgCount((prev) => prev + (timeline.length - prevCountRef.current));
+      }
     }
     prevCountRef.current = timeline.length;
   }, [timeline.length]);
@@ -734,7 +741,9 @@ const ChatRoom = () => {
       const vv = window.visualViewport;
       const onVVResize = () => {
         document.documentElement.style.setProperty('--vh', `${vv.height * 0.01}px`);
-        setTimeout(() => virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' }), 100);
+        if (isNearBottomRef.current) {
+          setTimeout(() => virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' }), 100);
+        }
       };
       vv.addEventListener("resize", onVVResize);
       return () => { window.removeEventListener('resize', setVh); vv.removeEventListener("resize", onVVResize); };
@@ -903,6 +912,7 @@ const ChatRoom = () => {
 
   const scrollToBottom = useCallback(() => {
     virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
+    setNewMsgCount(0);
   }, [virtualizer, timeline.length]);
 
   const username = roomConfig?.username ?? "";
@@ -1051,11 +1061,16 @@ const ChatRoom = () => {
         )}
       </div>
 
-      {/* Scroll to bottom FAB */}
+      {/* Scroll to bottom FAB with new message count */}
       <AnimatePresence>
-        {showScrollBottom && (
+        {(showScrollBottom || newMsgCount > 0) && (
           <motion.button initial={{ opacity: 0, scale: 0.8, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8, y: 10 }} transition={{ duration: 0.2 }}
-            onClick={scrollToBottom} className="fixed right-4 z-[999] w-10 h-10 rounded-full glass border border-border/50 flex items-center justify-center text-primary shadow-lg active:scale-95 transition-transform" style={{ bottom: '80px' }}>
+            onClick={scrollToBottom} className="fixed right-4 z-[999] flex items-center gap-2 rounded-full glass border border-border/50 px-3 h-10 text-primary shadow-lg active:scale-95 transition-transform" style={{ bottom: '80px' }}>
+            {newMsgCount > 0 && (
+              <span className="text-xs font-medium bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                {newMsgCount} new
+              </span>
+            )}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
           </motion.button>
         )}

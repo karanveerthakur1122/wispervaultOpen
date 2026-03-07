@@ -95,6 +95,8 @@ export function useRoom(config: RoomConfig | null) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
   const messagesRef = useRef<DecryptedMessage[]>([]);
+  const setupCompleteRef = useRef(false);
+  const offlineQueueRef = useRef<Array<{ text: string; file?: File; replyTo?: ReplyInfo; tempId: string }>>([]);
 
   // rAF batching for incoming messages
   const pendingMessagesRef = useRef<DecryptedMessage[]>([]);
@@ -193,8 +195,22 @@ export function useRoom(config: RoomConfig | null) {
 
       if (!existingRoom) {
         if (!config.isCreator) {
-          setChatEnded(true);
-          return;
+          // Retry once after 2s to handle transient network issues
+          await new Promise((r) => setTimeout(r, 2000));
+          if (cancelled) return;
+          const { data: retryRoom } = await supabase
+            .from("rooms")
+            .select("room_id, user_count, active, created_at, is_locked")
+            .eq("room_id", config.roomId)
+            .eq("active", true)
+            .maybeSingle();
+          if (!retryRoom) {
+            setChatEnded(true);
+            return;
+          }
+          // Use retry result
+          setRoomCreatedAt(retryRoom.created_at);
+          setIsRoomLocked(retryRoom.is_locked ?? false);
         }
       } else if (existingRoom.is_locked && !config.isCreator) {
         setChatEnded(true);
@@ -444,13 +460,40 @@ export function useRoom(config: RoomConfig | null) {
       channelRef.current = channel;
     };
 
-    setup();
+    setup().then(() => { if (!cancelled) setupCompleteRef.current = true; });
     return () => {
       cancelled = true;
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
+
+  // Offline queue flush
+  useEffect(() => {
+    if (!config) return;
+    const flushQueue = async () => {
+      if (!navigator.onLine || offlineQueueRef.current.length === 0) return;
+      const queue = [...offlineQueueRef.current];
+      offlineQueueRef.current = [];
+      for (const item of queue) {
+        try {
+          const replyPrefix = item.replyTo ? `[reply:${item.replyTo.messageId}:${item.replyTo.username}:${item.replyTo.preview}]` : "";
+          const fullText = replyPrefix + (item.text || "(media)");
+          const { encrypted, iv } = await workerEncrypt(fullText, config.password, config.roomId);
+          await supabase.from("messages").insert({
+            room_id: config.roomId, encrypted_blob: encrypted, iv,
+            sender_name: config.username, sender_color: config.avatarColor,
+            media_url: null, media_type: null,
+          });
+        } catch {
+          // Re-queue on failure
+          offlineQueueRef.current.push(item);
+        }
+      }
+    };
+    window.addEventListener("online", flushQueue);
+    return () => window.removeEventListener("online", flushQueue);
+  }, [config]);
 
   // Send message with optimistic rendering
   const sendMessage = useCallback(async (
@@ -475,6 +518,12 @@ export function useRoom(config: RoomConfig | null) {
       reactions: [], readBy: [], replyTo: replyTo || null, pending: true,
     };
     setMessages((prev) => [...prev, optimisticMsg]);
+
+    // Queue for offline if no network and no file
+    if (!navigator.onLine && !file) {
+      offlineQueueRef.current.push({ text: displayText, replyTo, tempId });
+      return;
+    }
 
     try {
       const { encrypted, iv } = await workerEncrypt(fullText, config.password, config.roomId);
