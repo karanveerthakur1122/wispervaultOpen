@@ -855,13 +855,38 @@ export function useRoom(config: RoomConfig | null) {
     return () => clearInterval(interval);
   }, [isConnected, config]);
 
-  // Cleanup presence on unmount + beforeunload + visibilitychange
+  // Visibility + focus handlers for Realtime Presence tracking
   useEffect(() => {
     if (!config) return;
 
+    const restorePresence = () => {
+      const ch = channelRef.current;
+      if (!ch) return;
+      ch.track({
+        username: config.username,
+        color: config.avatarColor,
+        online: true,
+        joined_at: Date.now(),
+      });
+    };
+
+    const handleVisibility = () => {
+      const ch = channelRef.current;
+      if (!ch) return;
+      if (document.visibilityState === "hidden") {
+        ch.untrack();
+      } else if (document.visibilityState === "visible") {
+        restorePresence();
+      }
+    };
+
+    const handleFocus = () => {
+      restorePresence();
+    };
+
     const cleanup = () => {
+      // DB presence cleanup on tab close
       if (presenceIdRef.current) {
-        // Use sendBeacon for reliable cleanup on tab close
         const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/presence?id=eq.${presenceIdRef.current}`;
         const headers = {
           'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -869,47 +894,23 @@ export function useRoom(config: RoomConfig | null) {
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal',
         };
-        // Try fetch with keepalive first (more reliable than sendBeacon for DELETE)
         try {
           fetch(url, { method: 'DELETE', headers, keepalive: true });
         } catch {
-          // Fallback: mark inactive via PATCH with sendBeacon
-          const patchUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/presence?id=eq.${presenceIdRef.current}`;
-          navigator.sendBeacon?.(patchUrl);
+          // fallback
         }
       }
+      channelRef.current?.untrack();
     };
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        // Mark as stale by setting last_seen far back so others prune it
-        if (presenceIdRef.current) {
-          supabase
-            .from("presence")
-            .update({ last_seen: new Date(Date.now() - 120000).toISOString() })
-            .eq("id", presenceIdRef.current)
-            .then();
-        }
-      } else if (document.visibilityState === 'visible') {
-        // Refresh presence when coming back
-        if (presenceIdRef.current) {
-          supabase
-            .from("presence")
-            .update({ last_seen: new Date().toISOString() })
-            .eq("id", presenceIdRef.current)
-            .then();
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', cleanup);
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("beforeunload", cleanup);
 
     return () => {
-      window.removeEventListener('beforeunload', cleanup);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      // Don't delete presence on unmount — only beforeunload and explicit leave handle that.
-      // This prevents showing offline when navigating within the app.
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("beforeunload", cleanup);
     };
   }, [config]);
 
