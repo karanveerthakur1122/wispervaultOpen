@@ -174,6 +174,10 @@ export function useRoom(config: RoomConfig | null) {
           setChatEnded(true);
           return;
         }
+      } else if (existingRoom.is_locked && !config.isCreator) {
+        // Room is locked — non-creators cannot rejoin
+        setChatEnded(true);
+        return;
         const { data: newRoom } = await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1, empty_since: null }).select("created_at").single();
         if (newRoom) setRoomCreatedAt(newRoom.created_at);
       } else {
