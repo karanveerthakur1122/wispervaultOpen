@@ -531,6 +531,14 @@ export function useRoom(config: RoomConfig | null) {
             ]);
           }
         })
+        .on("broadcast", { event: "user:kick" }, (payload) => {
+          const { username: kickedUser } = payload.payload as { username: string; by: string };
+          if (kickedUser === config.username) {
+            // We got kicked — leave the room
+            localStorage.removeItem(`room_${config.roomId}`);
+            setChatEnded(true);
+          }
+        })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
           // Broadcast join event once subscribed
@@ -919,6 +927,22 @@ export function useRoom(config: RoomConfig | null) {
     ]);
   }, [config]);
 
+  const kickUser = useCallback(async (targetUsername: string) => {
+    if (!config || !channelRef.current || !config.isCreator) return;
+    // Broadcast kick event
+    channelRef.current.send({
+      type: "broadcast",
+      event: "user:kick",
+      payload: { username: targetUsername, by: config.username },
+    });
+    // Remove their presence
+    await supabase
+      .from("presence")
+      .delete()
+      .eq("room_id", config.roomId)
+      .eq("username", targetUsername);
+  }, [config]);
+
   return {
     messages,
     onlineUsers,
@@ -940,5 +964,6 @@ export function useRoom(config: RoomConfig | null) {
     recordMediaView,
     reportScreenshot,
     broadcastMediaSaved,
+    kickUser,
   };
 }

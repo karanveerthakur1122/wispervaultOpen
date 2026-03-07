@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import RoomInfoPanel from "@/components/RoomInfoPanel";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -79,8 +80,10 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser,
   } = useRoom(roomConfig);
+
+  const [showRoomInfo, setShowRoomInfo] = useState(false);
 
   // Live elapsed timer
   const [elapsed, setElapsed] = useState("");
@@ -446,7 +449,9 @@ const ChatRoom = () => {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold text-foreground font-mono tracking-wider">{roomId}</p>
+              <button onClick={() => setShowRoomInfo(true)} className="text-sm font-semibold text-foreground font-mono tracking-wider hover:text-primary transition-colors active:scale-95">
+                {roomId}
+              </button>
               <SignalBars latency={connLatency} status={connStatus} size="sm" />
             </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -976,6 +981,18 @@ const ChatRoom = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Room Info Panel */}
+      <RoomInfoPanel
+        open={showRoomInfo}
+        onClose={() => setShowRoomInfo(false)}
+        roomId={roomId || ""}
+        onlineUsers={onlineUsers}
+        messages={messages}
+        isCreator={isCreator}
+        currentUsername={username}
+        onKickUser={kickUser}
+      />
     </div>
   );
 };
