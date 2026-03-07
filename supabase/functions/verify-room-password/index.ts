@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
     const { data: room, error } = await supabase
       .from("rooms")
-      .select("password_hash")
+      .select("password_hash, is_locked")
       .eq("room_id", room_id)
       .eq("active", true)
       .maybeSingle();
@@ -37,6 +37,13 @@ Deno.serve(async (req) => {
     if (error || !room) {
       return new Response(
         JSON.stringify({ valid: false, error: "Room not found" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (room.is_locked) {
+      return new Response(
+        JSON.stringify({ valid: false, error: "Room is locked by the creator" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
