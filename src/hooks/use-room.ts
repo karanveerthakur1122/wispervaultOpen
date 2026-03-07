@@ -89,12 +89,9 @@ export function useRoom(config: RoomConfig | null) {
   const presenceIdRef = useRef<string | null>(null);
   const messagesRef = useRef<DecryptedMessage[]>([]);
 
-  // Register service worker + request notification permission
+  // Request notification permission
   useEffect(() => {
     if (!config) return;
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
-    }
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -171,6 +168,11 @@ export function useRoom(config: RoomConfig | null) {
         .maybeSingle();
 
       if (!existingRoom) {
+        // Only creators can create rooms; if not creator, room was deleted
+        if (!config.isCreator) {
+          setChatEnded(true);
+          return;
+        }
         const { data: newRoom } = await supabase.from("rooms").insert({ room_id: config.roomId, user_count: 1, empty_since: null }).select("created_at").single();
         if (newRoom) setRoomCreatedAt(newRoom.created_at);
       } else {
