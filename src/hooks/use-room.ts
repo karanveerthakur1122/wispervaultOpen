@@ -531,6 +531,14 @@ export function useRoom(config: RoomConfig | null) {
             ]);
           }
         })
+        .on("broadcast", { event: "user:kick" }, (payload) => {
+          const { username: kickedUser } = payload.payload as { username: string; by: string };
+          if (kickedUser === config.username) {
+            // We got kicked — leave the room
+            localStorage.removeItem(`room_${config.roomId}`);
+            setChatEnded(true);
+          }
+        })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
           // Broadcast join event once subscribed
