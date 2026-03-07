@@ -18,9 +18,10 @@ export function useConnectivity() {
       const timer = setTimeout(() => controller.abort(), timeout);
       const start = performance.now();
 
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/?_cb=${Date.now()}`, {
         method: "HEAD",
         signal: controller.signal,
+        cache: "no-store",
         headers: {
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
@@ -59,8 +60,23 @@ export function useConnectivity() {
 
   const retry = useCallback(async () => {
     setStatus("checking");
-    await runCheck();
-  }, [runCheck]);
+
+    // Try up to 3 times with increasing timeouts
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const timeout = 6000 + attempt * 3000; // 6s, 9s, 12s
+      const reachable = await checkConnection(timeout);
+      if (reachable) {
+        applyResult(true);
+        return;
+      }
+      // Small delay between retries
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+
+    applyResult(false);
+  }, [checkConnection, applyResult]);
 
   useEffect(() => {
     runCheck();
