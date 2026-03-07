@@ -1,8 +1,9 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import DesktopBlocker from "@/components/DesktopBlocker";
@@ -20,6 +21,27 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const isMobile = useIsMobile();
   const { status, latency, serverRegion } = useConnectivity();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Prevent back button from closing the app — push a dummy history entry on root pages
+  useEffect(() => {
+    const isRootPage = location.pathname === "/" || location.pathname === "";
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (isRootPage) {
+        // Push state again to prevent app from closing
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+
+    if (isRootPage) {
+      window.history.pushState(null, "", window.location.href);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [location.pathname]);
 
   if (isMobile === false) {
     return <DesktopBlocker />;
