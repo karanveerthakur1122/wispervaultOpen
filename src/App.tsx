@@ -8,6 +8,7 @@ import { useConnectivity } from "@/hooks/use-connectivity";
 import DesktopBlocker from "@/components/DesktopBlocker";
 import ConnectionBlockedOverlay from "@/components/ConnectionBlockedOverlay";
 import ConnectionStatusDot from "@/components/ConnectionStatusDot";
+import PwaInstallBanner from "@/components/PwaInstallBanner";
 import Home from "./pages/Home";
 import CreateRoom from "./pages/CreateRoom";
 import JoinRoom from "./pages/JoinRoom";
@@ -44,6 +45,7 @@ const AppContent = () => {
   return (
     <>
       <ConnectionStatusDot status={status} latency={latency} serverRegion={serverRegion} />
+      <PwaInstallBanner />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/create" element={<CreateRoom />} />
