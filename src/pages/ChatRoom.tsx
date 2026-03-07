@@ -85,16 +85,8 @@ const ChatHeader = memo(({
       onTouchEnd={onTouchEnd}
     >
       <div className="flex items-center gap-3">
-        <div className="flex -space-x-2">
-          {onlineUsers.slice(0, 5).map((u) => (
-            <div
-              key={u.username}
-              className="w-8 h-8 rounded-full border-2 border-background flex items-center justify-center text-xs font-bold"
-              style={{ backgroundColor: u.color, color: "hsl(var(--background))" }}
-            >
-              {u.username[0]?.toUpperCase()}
-            </div>
-          ))}
+        <div className="w-10 h-10 rounded-full bg-primary/15 border-2 border-primary/30 flex items-center justify-center">
+          <span className="text-sm font-bold text-primary">{onlineUsers.length}</span>
         </div>
         <div>
           <div className="flex items-center gap-1.5">
