@@ -938,19 +938,34 @@ export function useRoom(config: RoomConfig | null) {
 
   const kickUser = useCallback(async (targetUsername: string) => {
     if (!config || !channelRef.current || !config.isCreator) return;
+    
+    // Find the user's color for the system event
+    const targetUser = onlineUsers.find((u) => u.username === targetUsername);
+    const targetColor = targetUser?.color || "";
+    
     // Broadcast kick event
     channelRef.current.send({
       type: "broadcast",
       event: "user:kick",
       payload: { username: targetUsername, by: config.username },
     });
-    // Remove their presence
+    
+    // Remove their presence from DB
     await supabase
       .from("presence")
       .delete()
       .eq("room_id", config.roomId)
       .eq("username", targetUsername);
-  }, [config]);
+    
+    // Immediately update local online users list
+    setOnlineUsers((prev) => prev.filter((u) => u.username !== targetUsername));
+    
+    // Add system event locally for admin
+    setSystemEvents((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), type: "leave", username: targetUsername, color: targetColor, timestamp: Date.now() },
+    ]);
+  }, [config, onlineUsers]);
 
   return {
     messages,
