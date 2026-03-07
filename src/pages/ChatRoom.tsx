@@ -356,8 +356,8 @@ const ChatRoom = () => {
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setHeaderHeight(entry.contentRect.height + 24); // include py-3 padding
+    const observer = new ResizeObserver(() => {
+      setHeaderHeight(el.offsetHeight);
     });
     setHeaderHeight(el.offsetHeight);
     observer.observe(el);
