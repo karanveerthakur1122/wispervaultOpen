@@ -673,7 +673,9 @@ export function useRoom(config: RoomConfig | null) {
         payload: { username: config.username, color: config.avatarColor },
       });
     }
-    // Remove own presence
+    // Untrack from Realtime Presence
+    channelRef.current?.untrack();
+    // Remove own DB presence
     if (presenceIdRef.current) {
       await supabase.from("presence").delete().eq("id", presenceIdRef.current);
       presenceIdRef.current = null;
