@@ -839,13 +839,16 @@ export function useRoom(config: RoomConfig | null) {
   useEffect(() => {
     if (!presenceIdRef.current || !config) return;
     const interval = setInterval(() => {
-      if (presenceIdRef.current) {
-        supabase
-          .from("presence")
-          .update({ last_seen: new Date().toISOString() })
-          .eq("id", presenceIdRef.current)
-          .then();
+      // Stop heartbeat if presence was cleared (e.g. kicked)
+      if (!presenceIdRef.current) {
+        clearInterval(interval);
+        return;
       }
+      supabase
+        .from("presence")
+        .update({ last_seen: new Date().toISOString() })
+        .eq("id", presenceIdRef.current)
+        .then();
     }, 20000);
     return () => clearInterval(interval);
   }, [isConnected, config]);
