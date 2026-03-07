@@ -534,9 +534,18 @@ export function useRoom(config: RoomConfig | null) {
         .on("broadcast", { event: "user:kick" }, (payload) => {
           const { username: kickedUser } = payload.payload as { username: string; by: string };
           if (kickedUser === config.username) {
-            // We got kicked — leave the room
+            // We got kicked — clear presence ref so heartbeat stops, then leave
+            presenceIdRef.current = null;
             localStorage.removeItem(`room_${config.roomId}`);
             setChatEnded(true);
+          } else {
+            // Another user was kicked — immediately remove from local online list
+            setOnlineUsers((prev) => prev.filter((u) => u.username !== kickedUser));
+            // Add a "leave" system event for the kicked user
+            setSystemEvents((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "leave", username: kickedUser, color: "", timestamp: Date.now() },
+            ]);
           }
         })
         .subscribe(async (status) => {
