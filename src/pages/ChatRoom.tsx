@@ -452,6 +452,7 @@ const ChatRoom = () => {
               <button onClick={() => setShowRoomInfo(true)} className="text-sm font-semibold text-foreground font-mono tracking-wider hover:text-primary transition-colors active:scale-95">
                 {roomId}
               </button>
+              {isRoomLocked && <Lock className="w-3.5 h-3.5 text-amber-400" />}
               <SignalBars latency={connLatency} status={connStatus} size="sm" />
             </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
