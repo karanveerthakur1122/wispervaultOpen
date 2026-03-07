@@ -39,12 +39,14 @@ interface RoomConfig {
   isCreator?: boolean;
 }
 
-/** Deduplicate presence rows by username */
-function deduplicatePresence(rows: Array<{ username: string; avatar_color: string }>) {
+/** Extract online users from Realtime Presence state */
+function presenceStateToUsers(state: Record<string, Array<{ username: string; color: string }>>): Array<{ username: string; color: string }> {
   const seen = new Map<string, { username: string; color: string }>();
-  for (const p of rows) {
-    if (!seen.has(p.username)) {
-      seen.set(p.username, { username: p.username, color: p.avatar_color });
+  for (const presences of Object.values(state)) {
+    for (const p of presences) {
+      if (p.username && !seen.has(p.username)) {
+        seen.set(p.username, { username: p.username, color: p.color });
+      }
     }
   }
   return Array.from(seen.values());
@@ -276,17 +278,7 @@ export function useRoom(config: RoomConfig | null) {
         }
       }
 
-      // Load online users (deduplicated by username)
-      const { data: presenceList } = await supabase
-        .from("presence")
-        .select("username, avatar_color")
-        .eq("room_id", config.roomId)
-        .eq("is_active", true);
-
-      if (presenceList && !cancelled) {
-        const uniqueUsers = deduplicatePresence(presenceList);
-        setOnlineUsers(uniqueUsers);
-      }
+      // Initial online users will be populated by Realtime Presence sync event
 
       // Subscribe to realtime
       const channel = supabase.channel(`room:${config.roomId}`);
@@ -445,43 +437,25 @@ export function useRoom(config: RoomConfig | null) {
             );
           }
         )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "presence", filter: `room_id=eq.${config.roomId}` },
-          async () => {
-            // Prune stale presence before fetching
-            const staleThreshold = new Date(Date.now() - 60 * 1000).toISOString();
-            await supabase
-              .from("presence")
-              .delete()
-              .eq("room_id", config.roomId)
-              .lt("last_seen", staleThreshold);
-
-            const { data } = await supabase
-              .from("presence")
-              .select("username, avatar_color")
-              .eq("room_id", config.roomId)
-              .eq("is_active", true);
-            if (data) {
-              const uniqueUsers = deduplicatePresence(data);
-              setOnlineUsers(uniqueUsers);
-
-              // Update room empty_since based on active user count
-              if (uniqueUsers.length === 0) {
-                await supabase
-                  .from("rooms")
-                  .update({ user_count: 0, empty_since: new Date().toISOString() })
-                  .eq("room_id", config.roomId)
-                  .is("empty_since", null);
-              } else {
-                await supabase
-                  .from("rooms")
-                  .update({ user_count: uniqueUsers.length, empty_since: null })
-                  .eq("room_id", config.roomId);
-              }
-            }
-          }
-        )
+        // Realtime Presence for online user tracking
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState<{ username: string; color: string }>();
+          const users = presenceStateToUsers(state);
+          setOnlineUsers(users);
+          // Sync room user_count
+          supabase.from("rooms").update({ 
+            user_count: users.length, 
+            empty_since: users.length === 0 ? new Date().toISOString() : null 
+          }).eq("room_id", config.roomId).then();
+        })
+        .on("presence", { event: "join" }, () => {
+          const state = channel.presenceState<{ username: string; color: string }>();
+          setOnlineUsers(presenceStateToUsers(state));
+        })
+        .on("presence", { event: "leave" }, () => {
+          const state = channel.presenceState<{ username: string; color: string }>();
+          setOnlineUsers(presenceStateToUsers(state));
+        })
         .on("broadcast", { event: "chat:end" }, () => {
           setChatEnded(true);
         })
@@ -560,8 +534,15 @@ export function useRoom(config: RoomConfig | null) {
         })
         .subscribe(async (status) => {
           if (!cancelled) setIsConnected(status === "SUBSCRIBED");
-          // Broadcast join event once subscribed
           if (status === "SUBSCRIBED" && channel) {
+            // Track presence via Realtime Presence
+            await channel.track({
+              username: config.username,
+              color: config.avatarColor,
+              online: true,
+              joined_at: Date.now(),
+            });
+            // Broadcast join event
             channel.send({
               type: "broadcast",
               event: "user:join",
@@ -681,7 +662,9 @@ export function useRoom(config: RoomConfig | null) {
         payload: { username: config.username, color: config.avatarColor },
       });
     }
-    // Remove own presence
+    // Untrack from Realtime Presence
+    channelRef.current?.untrack();
+    // Remove own DB presence
     if (presenceIdRef.current) {
       await supabase.from("presence").delete().eq("id", presenceIdRef.current);
       presenceIdRef.current = null;
@@ -863,13 +846,38 @@ export function useRoom(config: RoomConfig | null) {
     return () => clearInterval(interval);
   }, [isConnected, config]);
 
-  // Cleanup presence on unmount + beforeunload + visibilitychange
+  // Visibility + focus handlers for Realtime Presence tracking
   useEffect(() => {
     if (!config) return;
 
+    const restorePresence = () => {
+      const ch = channelRef.current;
+      if (!ch) return;
+      ch.track({
+        username: config.username,
+        color: config.avatarColor,
+        online: true,
+        joined_at: Date.now(),
+      });
+    };
+
+    const handleVisibility = () => {
+      const ch = channelRef.current;
+      if (!ch) return;
+      if (document.visibilityState === "hidden") {
+        ch.untrack();
+      } else if (document.visibilityState === "visible") {
+        restorePresence();
+      }
+    };
+
+    const handleFocus = () => {
+      restorePresence();
+    };
+
     const cleanup = () => {
+      // DB presence cleanup on tab close
       if (presenceIdRef.current) {
-        // Use sendBeacon for reliable cleanup on tab close
         const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/presence?id=eq.${presenceIdRef.current}`;
         const headers = {
           'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -877,47 +885,23 @@ export function useRoom(config: RoomConfig | null) {
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal',
         };
-        // Try fetch with keepalive first (more reliable than sendBeacon for DELETE)
         try {
           fetch(url, { method: 'DELETE', headers, keepalive: true });
         } catch {
-          // Fallback: mark inactive via PATCH with sendBeacon
-          const patchUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/presence?id=eq.${presenceIdRef.current}`;
-          navigator.sendBeacon?.(patchUrl);
+          // fallback
         }
       }
+      channelRef.current?.untrack();
     };
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        // Mark as stale by setting last_seen far back so others prune it
-        if (presenceIdRef.current) {
-          supabase
-            .from("presence")
-            .update({ last_seen: new Date(Date.now() - 120000).toISOString() })
-            .eq("id", presenceIdRef.current)
-            .then();
-        }
-      } else if (document.visibilityState === 'visible') {
-        // Refresh presence when coming back
-        if (presenceIdRef.current) {
-          supabase
-            .from("presence")
-            .update({ last_seen: new Date().toISOString() })
-            .eq("id", presenceIdRef.current)
-            .then();
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', cleanup);
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("beforeunload", cleanup);
 
     return () => {
-      window.removeEventListener('beforeunload', cleanup);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      // Don't delete presence on unmount — only beforeunload and explicit leave handle that.
-      // This prevents showing offline when navigating within the app.
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("beforeunload", cleanup);
     };
   }, [config]);
 
