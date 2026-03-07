@@ -7,7 +7,7 @@ import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
   Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock
 } from "lucide-react";
-import { useConnectivity } from "@/hooks/use-connectivity";
+import { useConnectivity, type ConnectivityStatus } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
 import EmojiPicker from "@/components/EmojiPicker";
 import { haptic } from "@/lib/haptics";
