@@ -981,6 +981,18 @@ const ChatRoom = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Room Info Panel */}
+      <RoomInfoPanel
+        open={showRoomInfo}
+        onClose={() => setShowRoomInfo(false)}
+        roomId={roomId || ""}
+        onlineUsers={onlineUsers}
+        messages={messages}
+        isCreator={isCreator}
+        currentUsername={username}
+        onKickUser={kickUser}
+      />
     </div>
   );
 };
