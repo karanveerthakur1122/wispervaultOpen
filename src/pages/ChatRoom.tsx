@@ -512,11 +512,30 @@ const ChatRoom = () => {
         </AlertDialog>
       </header>
 
+      {/* Offline banner — subtle inline below header */}
+      <AnimatePresence>
+        {connStatus === "blocked" && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed left-0 right-0 z-[999] overflow-hidden"
+            style={{ top: '60px' }}
+          >
+            <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-destructive/10 border-b border-destructive/20 backdrop-blur-sm">
+              <WifiOff className="w-3 h-3 text-destructive" />
+              <p className="text-[11px] text-destructive font-medium">No connection · Messages will sync when back online</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Pinned message banner — fixed below header */}
       {pinnedMessage && (
         <div
-          className="fixed left-0 right-0 z-[999] glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
-          style={{ top: '60px', backdropFilter: 'blur(20px)' }}
+          className="fixed left-0 right-0 z-[998] glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
+          style={{ top: connStatus === "blocked" ? '88px' : '60px', backdropFilter: 'blur(20px)' }}
           onClick={() => scrollToMessage(pinnedMessage.id)}
         >
           <Pin className="w-3 h-3 text-primary rotate-45" />
