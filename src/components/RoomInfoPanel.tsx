@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
   Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2,
-  Bell, BellOff, MessageSquare, Volume2, Vibrate, VolumeX, Moon
+  Bell, BellOff, Volume2, Vibrate, VolumeX, Moon
 } from "lucide-react";
 import { getRoomPrefs, setRoomPref, type SoundMode } from "@/lib/notification-prefs";
 import { toast } from "@/hooks/use-toast";
@@ -158,7 +158,7 @@ const RoomInfoPanel = ({
   // Notification & sound preferences (persisted per room via utility)
   const initPrefs = getRoomPrefs(roomId);
   const [notificationsOn, setNotificationsOn] = useState(initPrefs.notifications);
-  const [toastOn, setToastOn] = useState(initPrefs.toastNotifications);
+  
   const [soundMode, setSoundMode] = useState<SoundMode>(initPrefs.soundMode);
   const [dndEnabled, setDndEnabled] = useState(initPrefs.dndEnabled);
   const [dndStart, setDndStart] = useState(initPrefs.dndStart);
@@ -329,22 +329,6 @@ const RoomInfoPanel = ({
                 />
               </div>
 
-              {/* In-app toast toggle */}
-              <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MessageSquare className={`w-4 h-4 ${toastOn ? "text-primary" : "text-muted-foreground"}`} />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">In-App Toasts</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {toastOn ? "Show toast banners for new messages" : "In-app toasts are off"}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={toastOn}
-                  onCheckedChange={(v) => { setToastOn(v); setRoomPref(roomId, "toastNotifications", v); }}
-                />
-              </div>
 
               {/* Sound mode selector */}
               <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">

@@ -222,12 +222,10 @@ export function useRoom(config: RoomConfig | null) {
         pendingNotifCountRef.current += 1;
         if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
         notifTimerRef.current = setTimeout(flushGroupedNotification, 400);
-      } else if (decision.showToast && (notifBlocked || !pageHidden)) {
+      } else if (pageHidden && notifBlocked) {
+        // Fallback toast when page is hidden but browser notifications are blocked
         toast(title, { description: body, duration: 3000 });
       }
-    } else if (decision.showToast) {
-      // Notifications off but toasts on
-      toast(title, { description: body, duration: 3000 });
     }
 
     if (pageHidden) {
