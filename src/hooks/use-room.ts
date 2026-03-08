@@ -175,19 +175,34 @@ export function useRoom(config: RoomConfig | null) {
     }
   }, []);
 
+  /** Play the notification chime. Lazily creates & reuses a single Audio instance. */
+  const notifAudioRef = useRef<HTMLAudioElement | null>(null);
+  const playNotificationSound = useCallback(() => {
+    try {
+      if (!notifAudioRef.current) {
+        notifAudioRef.current = new Audio("/sounds/notification.mp3");
+        notifAudioRef.current.volume = 0.6;
+      }
+      notifAudioRef.current.currentTime = 0;
+      notifAudioRef.current.play().catch(() => {});
+    } catch {}
+  }, []);
+
   /** Preference-aware alert: checks notifications, sound mode, and DND schedule. */
   const alertForMessage = useCallback((title: string, options?: NotificationOptions) => {
     if (!config) return;
     const decision = getAlertDecision(config.roomId);
     if (decision.showNotification) {
-      showNotification(title, { ...options, silent: !decision.playSound });
+      showNotification(title, { ...options, silent: true }); // always silent push; we play our own sound
+    }
+    if (decision.playSound) {
+      playNotificationSound();
+      haptic.light();
     }
     if (decision.vibrate) {
       haptic.medium();
-    } else if (decision.playSound) {
-      haptic.light();
     }
-  }, [config, showNotification]);
+  }, [config, showNotification, playNotificationSound]);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
