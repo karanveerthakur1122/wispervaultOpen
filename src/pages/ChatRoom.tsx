@@ -59,6 +59,18 @@ const ChatHeader = memo(({
   headerRef, onTouchStart, onTouchMove, onTouchEnd, isEndingChat, setIsEndingChat,
 }: ChatHeaderProps) => {
   const [elapsed, setElapsed] = useState("");
+  const [isDndActive, setIsDndActive] = useState(false);
+
+  // Check DND status every 30s
+  useEffect(() => {
+    const checkDnd = () => {
+      const prefs = getRoomPrefs(roomId);
+      setIsDndActive(prefs.dndEnabled && isInDndWindow(prefs.dndStart, prefs.dndEnd));
+    };
+    checkDnd();
+    const iv = setInterval(checkDnd, 30_000);
+    return () => clearInterval(iv);
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomCreatedAt) return;
