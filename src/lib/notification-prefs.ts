@@ -59,6 +59,7 @@ export function isInDndWindow(start: string, end: string): boolean {
 
 export interface AlertDecision {
   showNotification: boolean;
+  showToast: boolean;
   playSound: boolean;
   vibrate: boolean;
 }
