@@ -94,6 +94,7 @@ export function useRoom(config: RoomConfig | null) {
   const [isRoomLocked, setIsRoomLocked] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
   const messagesRef = useRef<DecryptedMessage[]>([]);
   const setupCompleteRef = useRef(false);
   const offlineQueueRef = useRef<Array<{ text: string; file?: File; replyTo?: ReplyInfo; tempId: string }>>([]);
@@ -237,6 +238,17 @@ export function useRoom(config: RoomConfig | null) {
         .select("id")
         .single();
       if (presenceData) presenceIdRef.current = presenceData.id;
+
+      // Create or upsert session token for server-side sender validation
+      const { data: sessionData } = await supabase
+        .from("room_sessions")
+        .upsert(
+          { room_id: config.roomId, username: config.username },
+          { onConflict: "room_id,username" }
+        )
+        .select("session_token")
+        .single();
+      if (sessionData) sessionTokenRef.current = sessionData.session_token;
 
       const staleThreshold = new Date(Date.now() - 60 * 1000).toISOString();
       await supabase.from("presence").delete()
@@ -468,7 +480,26 @@ export function useRoom(config: RoomConfig | null) {
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
 
-  // Offline queue flush
+  // Client-side expiry: remove messages older than 2 hours every 30 seconds
+  useEffect(() => {
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.pending || (now - m.timestamp < TWO_HOURS));
+        if (filtered.length !== prev.length) {
+          // Also unpin if pinned message expired
+          setPinnedMessage((p) => {
+            if (p && !p.pending && now - p.timestamp >= TWO_HOURS) return null;
+            return p;
+          });
+        }
+        return filtered.length === prev.length ? prev : filtered;
+      });
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!config) return;
     const flushQueue = async () => {
@@ -608,35 +639,71 @@ export function useRoom(config: RoomConfig | null) {
     if (!config) return;
     const msg = messagesRef.current.find((m) => m.id === messageId);
     if (!msg || msg.username !== config.username) return;
+    // Optimistic UI removal
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
     setPinnedMessage((p) => (p?.id === messageId ? null : p));
-    const { error } = await supabase.from("messages").delete().eq("id", messageId);
-    if (error) {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === messageId)) return prev;
-        return [...prev, msg].sort((a, b) => a.timestamp - b.timestamp);
+
+    if (sessionTokenRef.current) {
+      // Server-side validated delete via edge function
+      const { error } = await supabase.functions.invoke("delete-message", {
+        body: { message_id: messageId, session_token: sessionTokenRef.current },
       });
+      if (error) {
+        // Restore on failure
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === messageId)) return prev;
+          return [...prev, msg].sort((a, b) => a.timestamp - b.timestamp);
+        });
+        return;
+      }
     } else {
-      channelRef.current?.send({ type: "broadcast", event: "message_deleted", payload: { username: config.username, color: config.avatarColor } });
-      setSystemEvents((prev) => [...prev, { id: crypto.randomUUID(), type: "message_deleted", username: config.username, color: config.avatarColor, timestamp: Date.now() }]);
+      // Fallback direct delete (legacy)
+      const { error } = await supabase.from("messages").delete().eq("id", messageId);
+      if (error) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === messageId)) return prev;
+          return [...prev, msg].sort((a, b) => a.timestamp - b.timestamp);
+        });
+        return;
+      }
     }
+    channelRef.current?.send({ type: "broadcast", event: "message_deleted", payload: { username: config.username, color: config.avatarColor } });
+    setSystemEvents((prev) => [...prev, { id: crypto.randomUUID(), type: "message_deleted", username: config.username, color: config.avatarColor, timestamp: Date.now() }]);
   }, [config]);
 
   const editMessage = useCallback(async (messageId: string, newText: string) => {
     if (!config) return;
     const msg = messagesRef.current.find((m) => m.id === messageId);
     if (!msg || msg.username !== config.username) return;
+
+    // Check if message has expired client-side
+    const twoHoursMs = 2 * 60 * 60 * 1000;
+    if (Date.now() - msg.timestamp > twoHoursMs) return;
+
     const fullText = msg.replyTo
       ? `[reply:${msg.replyTo.messageId}:${msg.replyTo.username}:${msg.replyTo.preview}]${newText}`
       : newText;
     const { encrypted, iv } = await workerEncrypt(fullText, config.password, config.roomId);
+    // Optimistic update
     setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, text: newText } : m)));
-    const { error } = await supabase.from("messages").update({ encrypted_blob: encrypted, iv }).eq("id", messageId);
-    if (error) {
-      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, text: msg.text } : m)));
-      return;
+
+    if (sessionTokenRef.current) {
+      // Server-side validated edit via edge function
+      const { error } = await supabase.functions.invoke("edit-message", {
+        body: { message_id: messageId, session_token: sessionTokenRef.current, encrypted_blob: encrypted, iv },
+      });
+      if (error) {
+        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, text: msg.text } : m)));
+      }
+    } else {
+      // Fallback direct edit (legacy)
+      const { error } = await supabase.from("messages").update({ encrypted_blob: encrypted, iv }).eq("id", messageId);
+      if (error) {
+        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, text: msg.text } : m)));
+        return;
+      }
+      await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
     }
-    await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
   }, [config]);
 
   const addReaction = useCallback(async (messageId: string, emoji: string) => {

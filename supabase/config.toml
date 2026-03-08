@@ -15,5 +15,10 @@ verify_jwt = false
 [functions.verify-room-password]
 verify_jwt = false
 
+[functions.edit-message]
+verify_jwt = false
+
+[functions.delete-message]
+verify_jwt = false
 [functions.tenor-search]
 verify_jwt = false

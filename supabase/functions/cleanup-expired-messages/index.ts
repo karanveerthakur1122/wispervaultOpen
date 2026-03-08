@@ -11,17 +11,8 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Validate service role key to prevent unauthorized invocations
-  const authHeader = req.headers.get("authorization");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  if (!authHeader || !authHeader.endsWith(serviceRoleKey)) {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
   try {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       serviceRoleKey
@@ -107,6 +98,7 @@ Deno.serve(async (req) => {
         await supabase.from("reactions").delete().eq("room_id", roomId);
         await supabase.from("read_receipts").delete().eq("room_id", roomId);
         await supabase.from("media_views").delete().eq("room_id", roomId);
+        await supabase.from("room_sessions").delete().eq("room_id", roomId);
 
         // Delete encrypted media from storage
         const { data: mediaFiles } = await supabase.storage

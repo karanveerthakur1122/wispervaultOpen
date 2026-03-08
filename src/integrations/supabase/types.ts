@@ -218,6 +218,38 @@ export type Database = {
           },
         ]
       }
+      room_sessions: {
+        Row: {
+          id: string
+          joined_at: string
+          room_id: string
+          session_token: string
+          username: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          room_id: string
+          session_token?: string
+          username: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          room_id?: string
+          session_token?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_sessions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["room_id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           active: boolean
