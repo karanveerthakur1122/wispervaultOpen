@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
+  Send, LogOut, Users, Shield, Paperclip, Pin, Smile, Bell,
   Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock, Moon
 } from "lucide-react";
 import { getRoomPrefs, isInDndWindow } from "@/lib/notification-prefs";
