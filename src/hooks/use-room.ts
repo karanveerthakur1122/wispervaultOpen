@@ -163,15 +163,21 @@ export function useRoom(config: RoomConfig | null) {
   }, []);
 
   const fireNotification = useCallback((title: string, options?: NotificationOptions) => {
-    const opts = { ...options, icon: "/favicon.ico" };
+    const opts: NotificationOptions = { ...options, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png" };
     if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then((reg) => {
         reg.showNotification(title, opts);
       }).catch(() => {
-        try { new Notification(title, opts); } catch {}
+        try {
+          const n = new Notification(title, opts);
+          n.onclick = () => { window.focus(); n.close(); };
+        } catch {}
       });
     } else {
-      try { new Notification(title, opts); } catch {}
+      try {
+        const n = new Notification(title, opts);
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch {}
     }
   }, []);
 
