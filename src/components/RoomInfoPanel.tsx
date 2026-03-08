@@ -276,10 +276,10 @@ const RoomInfoPanel = ({
 
             {/* Notifications & Sound */}
             <section className="space-y-2">
-              <p className="text-xs text-muted-foreground/60 px-1 font-medium uppercase tracking-wider">Notifications</p>
+              <p className="text-xs text-muted-foreground/60 px-1 font-medium uppercase tracking-wider">Notifications & Sound</p>
 
-
-
+              {/* Notification permission toggle */}
+              <NotificationToggle />
               {/* Sound mode selector */}
               <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
