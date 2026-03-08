@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { encryptFile } from "@/lib/crypto";
+import { getAlertDecision } from "@/lib/notification-prefs";
+import { haptic } from "@/lib/haptics";
 import { workerEncrypt, workerDecrypt, workerDecryptBatch, workerEncryptFile } from "@/lib/crypto-worker-api";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";

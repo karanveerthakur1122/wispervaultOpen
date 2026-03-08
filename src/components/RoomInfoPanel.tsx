@@ -155,37 +155,21 @@ const RoomInfoPanel = ({
   const [mediaTab, setMediaTab] = useState<MediaTab>("photos");
   const [kickTarget, setKickTarget] = useState<string | null>(null);
 
-  // Notification & sound preferences (persisted per room)
-  const storageKey = `room_prefs_${roomId}`;
-  const getPrefs = () => {
-    try {
-      return JSON.parse(localStorage.getItem(storageKey) || "{}");
-    } catch { return {}; }
-  };
-  const [notificationsOn, setNotificationsOn] = useState(() => getPrefs().notifications !== false);
-  const [soundMode, setSoundMode] = useState<"volume" | "vibrate" | "mute">(() => getPrefs().soundMode || "volume");
-
-  const updatePref = useCallback((key: string, value: unknown) => {
-    const prefs = { ...getPrefs(), [key]: value };
-    localStorage.setItem(storageKey, JSON.stringify(prefs));
-  }, [storageKey]);
+  // Notification & sound preferences (persisted per room via utility)
+  const initPrefs = getRoomPrefs(roomId);
+  const [notificationsOn, setNotificationsOn] = useState(initPrefs.notifications);
+  const [soundMode, setSoundMode] = useState<SoundMode>(initPrefs.soundMode);
+  const [dndEnabled, setDndEnabled] = useState(initPrefs.dndEnabled);
+  const [dndStart, setDndStart] = useState(initPrefs.dndStart);
+  const [dndEnd, setDndEnd] = useState(initPrefs.dndEnd);
 
   const handleToggleNotifications = useCallback(() => {
     setNotificationsOn((prev) => {
       const next = !prev;
-      updatePref("notifications", next);
+      setRoomPref(roomId, "notifications", next);
       return next;
     });
-  }, [updatePref]);
-
-  const cycleSoundMode = useCallback(() => {
-    setSoundMode((prev) => {
-      const order: Array<"volume" | "vibrate" | "mute"> = ["volume", "vibrate", "mute"];
-      const next = order[(order.indexOf(prev) + 1) % 3];
-      updatePref("soundMode", next);
-      return next;
-    });
-  }, [updatePref]);
+  }, [roomId]);
 
   const mediaMessages = useMemo(() => {
     return messages.filter((m) => m.mediaUrl && m.mediaType);
