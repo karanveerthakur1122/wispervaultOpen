@@ -1,0 +1,1 @@
+ALTER TABLE public.room_sessions ADD COLUMN is_creator boolean NOT NULL DEFAULT false;

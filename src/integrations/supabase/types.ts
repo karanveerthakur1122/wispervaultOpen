@@ -221,6 +221,7 @@ export type Database = {
       room_sessions: {
         Row: {
           id: string
+          is_creator: boolean
           joined_at: string
           room_id: string
           session_token: string
@@ -228,6 +229,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          is_creator?: boolean
           joined_at?: string
           room_id: string
           session_token?: string
@@ -235,6 +237,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          is_creator?: boolean
           joined_at?: string
           room_id?: string
           session_token?: string
