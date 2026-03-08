@@ -20,6 +20,7 @@ import { useRoom, type DecryptedMessage, type ReplyInfo, type SystemEvent } from
 import { supabase } from "@/integrations/supabase/client";
 import { workerDecryptFile } from "@/lib/crypto-worker-api";
 import { deriveKey } from "@/lib/crypto";
+import ZoomableImage from "@/components/ZoomableImage";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
