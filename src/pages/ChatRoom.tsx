@@ -689,9 +689,15 @@ const ChatRoom = () => {
   }, [roomId, navigate]);
 
   const {
-    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage,
+    messages, onlineUsers, isConnected, chatEnded, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
+    sendMessage, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage, getChannel,
   } = useRoom(roomConfig);
+
+  const { typingUsers, typingText, onInputChange: onTypingInput, onMessageSent: onTypingSent } = useTypingIndicator({
+    channel: getChannel(),
+    username: roomConfig?.username ?? "",
+    onlineUsernames: onlineUsers.map((u) => u.username),
+  });
 
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const isCreator = roomConfig?.isCreator ?? false;
