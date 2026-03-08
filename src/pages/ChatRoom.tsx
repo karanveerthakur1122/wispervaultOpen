@@ -131,14 +131,15 @@ const ChatHeader = memo(({
               <button
                 onClick={() => {
                   if (!("Notification" in window)) return;
-                  if (Notification.permission === "default") {
-                    Notification.requestPermission().then((r) => setNotifPerm(r));
-                  } else {
-                    toast("Notifications are blocked", {
-                      description: "Tap your browser's lock icon (🔒) → Site settings → Allow notifications.",
-                      duration: 5000,
-                    });
-                  }
+                  Notification.requestPermission().then((r) => {
+                    setNotifPerm(r);
+                    if (r === "denied") {
+                      toast("Permission denied", {
+                        description: "To enable, tap your browser's lock icon (🔒) → Site settings → Allow notifications.",
+                        duration: 5000,
+                      });
+                    }
+                  });
                 }}
                 className="active:scale-90 transition-transform"
               >
