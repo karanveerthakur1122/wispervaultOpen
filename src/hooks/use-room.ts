@@ -832,8 +832,8 @@ export function useRoom(config: RoomConfig | null) {
   }, [config, isRoomLocked]);
 
   return {
-    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead,
-    recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage,
+    messages, onlineUsers, isConnected, chatEnded, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
+    sendMessage, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead,
+    recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage, getChannel,
   };
 }
