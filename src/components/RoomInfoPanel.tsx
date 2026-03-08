@@ -167,11 +167,11 @@ const NotificationToggle = () => {
       toast({ title: "To disable", description: "Use your browser's site settings to block notifications." });
       return;
     }
-    if (Notification.permission === "default") {
-      const result = await Notification.requestPermission();
-      setPerm(result);
-    } else {
-      toast({ title: "Notifications blocked", description: "Tap your browser's lock icon (🔒) → Site settings → Allow notifications.", variant: "destructive" });
+    // Always attempt to request — works for "default", silently fails for "denied"
+    const result = await Notification.requestPermission();
+    setPerm(result);
+    if (result === "denied") {
+      toast({ title: "Permission denied", description: "To enable, tap your browser's lock icon (🔒) → Site settings → Allow notifications.", variant: "destructive" });
     }
   }, []);
 
