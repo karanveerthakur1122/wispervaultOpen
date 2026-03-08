@@ -99,6 +99,7 @@ export function useRoom(config: RoomConfig | null) {
   const sessionTokenRef = useRef<string | null>(null);
   const messagesRef = useRef<DecryptedMessage[]>([]);
   const setupCompleteRef = useRef(false);
+  // Legacy offline queue ref (replaced by useMessageQueue but kept for type compat)
   const offlineQueueRef = useRef<Array<{ text: string; file?: File; replyTo?: ReplyInfo; tempId: string }>>([]);
 
   // rAF batching for incoming messages
