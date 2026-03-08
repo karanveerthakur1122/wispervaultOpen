@@ -557,11 +557,25 @@ const MessageBubble = memo(({
             {new Date(msg.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
           </p>
           {msg.isOwn && (
-            allRead ? <CheckCheck className="w-3 h-3 text-primary" /> :
-            isRead ? <CheckCheck className="w-3 h-3 text-muted-foreground/40" /> :
-            <Check className="w-3 h-3 text-muted-foreground/40" />
+            msg.sendStatus === "failed" ? (
+              <button onClick={(e) => { e.stopPropagation(); onRetry?.(msg.id); }} className="flex items-center gap-0.5">
+                <RotateCcw className="w-3 h-3 text-destructive" />
+                <span className="text-[9px] text-destructive">Retry</span>
+              </button>
+            ) : msg.sendStatus === "sending" ? (
+              <Loader2 className="w-3 h-3 text-muted-foreground/40 animate-spin" />
+            ) : msg.sendStatus === "pending" || msg.pending ? (
+              <svg className="w-3 h-3 text-muted-foreground/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+            ) : allRead ? (
+              <CheckCheck className="w-3 h-3 text-primary" />
+            ) : isRead ? (
+              <CheckCheck className="w-3 h-3 text-muted-foreground/40" />
+            ) : (
+              <Check className="w-3 h-3 text-muted-foreground/40" />
+            )
           )}
-          {msg.pending && <Loader2 className="w-3 h-3 text-muted-foreground/40 animate-spin" />}
         </div>
 
         {showReadBy && msg.readBy.length > 0 && (
