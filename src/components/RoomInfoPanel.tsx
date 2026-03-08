@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
   Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2,
-  Bell, BellOff, Volume2, Vibrate, VolumeX, Moon
+  Volume2, Vibrate, VolumeX, Moon
 } from "lucide-react";
 import { getRoomPrefs, setRoomPref, type SoundMode } from "@/lib/notification-prefs";
 import { toast } from "@/hooks/use-toast";
@@ -155,42 +155,12 @@ const RoomInfoPanel = ({
   const [mediaTab, setMediaTab] = useState<MediaTab>("photos");
   const [kickTarget, setKickTarget] = useState<string | null>(null);
 
-  // Notification & sound preferences (persisted per room via utility)
+  // Sound preferences (persisted per room via utility)
   const initPrefs = getRoomPrefs(roomId);
-  const [notificationsOn, setNotificationsOn] = useState(initPrefs.notifications);
-  
   const [soundMode, setSoundMode] = useState<SoundMode>(initPrefs.soundMode);
   const [dndEnabled, setDndEnabled] = useState(initPrefs.dndEnabled);
   const [dndStart, setDndStart] = useState(initPrefs.dndStart);
   const [dndEnd, setDndEnd] = useState(initPrefs.dndEnd);
-
-  const handleToggleNotifications = useCallback(async () => {
-    const wantOn = !notificationsOn;
-    if (wantOn && "Notification" in window) {
-      const perm = Notification.permission;
-      if (perm === "denied") {
-        toast({
-          title: "Notifications blocked",
-          description: "Please enable notifications in your browser settings.",
-          variant: "destructive",
-        });
-        return; // don't toggle on if denied
-      }
-      if (perm === "default") {
-        const result = await Notification.requestPermission();
-        if (result !== "granted") {
-          toast({
-            title: "Permission not granted",
-            description: "Notifications won't work without permission.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-    }
-    setNotificationsOn(wantOn);
-    setRoomPref(roomId, "notifications", wantOn);
-  }, [roomId, notificationsOn]);
 
   const mediaMessages = useMemo(() => {
     return messages.filter((m) => m.mediaUrl && m.mediaType);
@@ -308,26 +278,6 @@ const RoomInfoPanel = ({
             <section className="space-y-2">
               <p className="text-xs text-muted-foreground/60 px-1 font-medium uppercase tracking-wider">Notifications</p>
 
-              {/* Notifications toggle */}
-              <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {notificationsOn ? (
-                    <Bell className="w-4 h-4 text-primary" />
-                  ) : (
-                    <BellOff className="w-4 h-4 text-muted-foreground" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Notifications</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {notificationsOn ? "You'll be notified of new messages" : "Notifications are off"}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={notificationsOn}
-                  onCheckedChange={handleToggleNotifications}
-                />
-              </div>
 
 
               {/* Sound mode selector */}

@@ -193,6 +193,16 @@ const NotificationPermissionBanner = memo(({ topOffset }: { topOffset: number })
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVis); };
   }, []);
 
+  // Auto-prompt for permission when entering the room
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then((result) => {
+        setPermState(result as "default" | "denied" | "granted");
+      });
+    }
+  }, []);
+
   const handleAllow = useCallback(() => {
     if (!("Notification" in window)) return;
     if (Notification.permission === "denied") {
