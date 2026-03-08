@@ -337,6 +337,7 @@ interface MessageBubbleProps {
   onReply: (msg: DecryptedMessage) => void;
   onScrollToMessage: (msgId: string) => void;
   onLightbox: (url: string, messageId: string, mediaType?: string) => void;
+  onRetry?: (tempId: string) => void;
 }
 
 const MessageBubble = memo(({
