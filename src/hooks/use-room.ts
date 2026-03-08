@@ -209,18 +209,24 @@ export function useRoom(config: RoomConfig | null) {
   }, [showNotification]);
 
   /** Preference-aware alert: checks notifications, sound mode, DND, and page visibility. */
-  const alertForMessage = useCallback((title: string, options?: NotificationOptions) => {
+  const alertForMessage = useCallback((title: string, body?: string) => {
     if (!config) return;
     const decision = getAlertDecision(config.roomId);
 
     // Only show system notification when page is NOT visible (WhatsApp-style)
     const pageHidden = typeof document !== "undefined" && document.visibilityState !== "visible";
+    const notifBlocked = !("Notification" in window) || Notification.permission === "denied";
 
-    if (decision.showNotification && pageHidden) {
-      // Group rapid notifications
-      pendingNotifCountRef.current += 1;
-      if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
-      notifTimerRef.current = setTimeout(flushGroupedNotification, 400);
+    if (decision.showNotification) {
+      if (pageHidden && !notifBlocked) {
+        // Group rapid system notifications
+        pendingNotifCountRef.current += 1;
+        if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
+        notifTimerRef.current = setTimeout(flushGroupedNotification, 400);
+      } else if (notifBlocked || !pageHidden) {
+        // Fallback: in-app toast when notifications are blocked OR page is visible
+        toast(title, { description: body, duration: 3000 });
+      }
     }
 
     if (pageHidden) {
@@ -231,6 +237,7 @@ export function useRoom(config: RoomConfig | null) {
       if (decision.vibrate) {
         haptic.medium();
       }
+    }
     }
   }, [config, showNotification, playNotificationSound, flushGroupedNotification]);
 
