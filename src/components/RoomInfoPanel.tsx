@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
-  Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2
+  Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2,
+  Bell, BellOff, Volume2, Vibrate, VolumeX
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -153,6 +154,38 @@ const RoomInfoPanel = ({
   const [mediaTab, setMediaTab] = useState<MediaTab>("photos");
   const [kickTarget, setKickTarget] = useState<string | null>(null);
 
+  // Notification & sound preferences (persisted per room)
+  const storageKey = `room_prefs_${roomId}`;
+  const getPrefs = () => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || "{}");
+    } catch { return {}; }
+  };
+  const [notificationsOn, setNotificationsOn] = useState(() => getPrefs().notifications !== false);
+  const [soundMode, setSoundMode] = useState<"volume" | "vibrate" | "mute">(() => getPrefs().soundMode || "volume");
+
+  const updatePref = useCallback((key: string, value: unknown) => {
+    const prefs = { ...getPrefs(), [key]: value };
+    localStorage.setItem(storageKey, JSON.stringify(prefs));
+  }, [storageKey]);
+
+  const handleToggleNotifications = useCallback(() => {
+    setNotificationsOn((prev) => {
+      const next = !prev;
+      updatePref("notifications", next);
+      return next;
+    });
+  }, [updatePref]);
+
+  const cycleSoundMode = useCallback(() => {
+    setSoundMode((prev) => {
+      const order: Array<"volume" | "vibrate" | "mute"> = ["volume", "vibrate", "mute"];
+      const next = order[(order.indexOf(prev) + 1) % 3];
+      updatePref("soundMode", next);
+      return next;
+    });
+  }, [updatePref]);
+
   const mediaMessages = useMemo(() => {
     return messages.filter((m) => m.mediaUrl && m.mediaType);
   }, [messages]);
@@ -264,6 +297,74 @@ const RoomInfoPanel = ({
                 </div>
               </section>
             )}
+
+            {/* Notifications & Sound */}
+            <section className="space-y-2">
+              <p className="text-xs text-muted-foreground/60 px-1 font-medium uppercase tracking-wider">Notifications</p>
+
+              {/* Notifications toggle */}
+              <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {notificationsOn ? (
+                    <Bell className="w-4 h-4 text-primary" />
+                  ) : (
+                    <BellOff className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Notifications</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {notificationsOn ? "You'll be notified of new messages" : "Notifications are off"}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={notificationsOn}
+                  onCheckedChange={handleToggleNotifications}
+                />
+              </div>
+
+              {/* Sound mode selector */}
+              <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {soundMode === "volume" ? (
+                    <Volume2 className="w-4 h-4 text-primary" />
+                  ) : soundMode === "vibrate" ? (
+                    <Vibrate className="w-4 h-4 text-primary" />
+                  ) : (
+                    <VolumeX className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Alert Mode</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {soundMode === "volume" ? "Sound on" : soundMode === "vibrate" ? "Vibrate only" : "Silent"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-1 p-0.5 glass rounded-lg">
+                  {([
+                    { key: "volume" as const, icon: <Volume2 className="w-3.5 h-3.5" /> },
+                    { key: "vibrate" as const, icon: <Vibrate className="w-3.5 h-3.5" /> },
+                    { key: "mute" as const, icon: <VolumeX className="w-3.5 h-3.5" /> },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => {
+                        setSoundMode(opt.key);
+                        updatePref("soundMode", opt.key);
+                      }}
+                      className={`p-1.5 rounded-md transition-colors ${
+                        soundMode === opt.key
+                          ? "bg-primary/15 text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {opt.icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
             {/* Online Users Section */}
             <section className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
