@@ -1118,6 +1118,7 @@ const ChatRoom = () => {
                     onReply={handleReply}
                     onScrollToMessage={scrollToMessage}
                     onLightbox={(url, messageId, mediaType) => setLightboxData({ url, messageId, mediaType })}
+                    onRetry={retryMessage}
                   />
                 )}
               </div>
