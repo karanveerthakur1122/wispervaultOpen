@@ -167,6 +167,16 @@
   }
 }
 
+/* Reply highlight animation */
+@keyframes reply-highlight {
+  0% { background-color: hsla(var(--primary) / 0.25); }
+  100% { background-color: transparent; }
+}
+.reply-highlight {
+  animation: reply-highlight 0.6s ease-out;
+  border-radius: var(--radius);
+}
+
 /* Typing indicator dot animation */
 @keyframes typing-dot {
   0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }

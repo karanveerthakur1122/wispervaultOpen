@@ -963,7 +963,17 @@ const ChatRoom = () => {
 
   const scrollToMessage = useCallback((msgId: string) => {
     const idx = timeline.findIndex((t) => t.type === "message" && t.data.id === msgId);
-    if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
+    if (idx >= 0) {
+      virtualizer.scrollToIndex(idx, { align: 'center', behavior: 'smooth' });
+      // After scroll completes, highlight the target message
+      setTimeout(() => {
+        const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+        if (el) {
+          el.classList.add("reply-highlight");
+          setTimeout(() => el.classList.remove("reply-highlight"), 600);
+        }
+      }, 350);
+    }
   }, [timeline, virtualizer]);
 
   const clearOverlays = useCallback(() => { setActiveReactionMsg(null); setShowContextMenu(null); }, []);
