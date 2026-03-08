@@ -832,6 +832,8 @@ const ChatRoom = () => {
     const currentFile = selectedFile;
     const currentReply = replyTo;
     setSelectedFile(null); setFilePreviewUrl(null); setReplyTo(null);
+    // Force scroll to bottom on own send
+    justSentRef.current = true;
     try {
       let fileToSend: File | undefined = currentFile || undefined;
       if (fileToSend) {
