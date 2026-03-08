@@ -674,7 +674,7 @@ const ChatRoom = () => {
   const [headerHeight, setHeaderHeight] = useState(56);
   const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
