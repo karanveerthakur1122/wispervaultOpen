@@ -121,7 +121,22 @@ const ChatHeader = memo(({
             {notifPerm === "granted" ? (
               <Bell className="w-3 h-3 text-primary flex-shrink-0" />
             ) : (
-              <BellOff className="w-3 h-3 text-destructive flex-shrink-0" />
+              <button
+                onClick={() => {
+                  if (!("Notification" in window)) return;
+                  if (Notification.permission === "default") {
+                    Notification.requestPermission().then((r) => setNotifPerm(r));
+                  } else {
+                    toast("Notifications are blocked", {
+                      description: "Tap your browser's lock icon (🔒) → Site settings → Allow notifications.",
+                      duration: 5000,
+                    });
+                  }
+                }}
+                className="active:scale-90 transition-transform"
+              >
+                <BellOff className="w-3 h-3 text-destructive flex-shrink-0" />
+              </button>
             )}
             <SignalBars latency={connLatency} status={connStatus} size="sm" />
           </div>

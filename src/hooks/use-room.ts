@@ -228,13 +228,15 @@ export function useRoom(config: RoomConfig | null) {
       }
     }
 
-    // Sound & vibration should play regardless of page visibility
-    if (decision.playSound) {
-      playNotificationSound();
-      haptic.light();
-    }
-    if (decision.vibrate) {
-      haptic.medium();
+    // Sound & vibration only when notifications are not blocked
+    if (!notifBlocked) {
+      if (decision.playSound) {
+        playNotificationSound();
+        haptic.light();
+      }
+      if (decision.vibrate) {
+        haptic.medium();
+      }
     }
   }, [config, showNotification, playNotificationSound, flushGroupedNotification]);
 
