@@ -729,6 +729,13 @@ const ChatRoom = () => {
     setRoomConfig(JSON.parse(stored));
   }, [roomId, navigate]);
 
+  // Auto-prompt for notification permission on room entry
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   const {
     messages, onlineUsers, isConnected, chatEnded, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
     sendMessage, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage, channel,
