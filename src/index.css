@@ -167,6 +167,12 @@
   }
 }
 
+/* Typing indicator dot animation */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
 /* Block print / screen capture */
 @media print {
   body {
