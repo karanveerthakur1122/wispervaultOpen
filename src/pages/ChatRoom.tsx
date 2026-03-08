@@ -657,7 +657,6 @@ const ChatRoom = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const virtualContentRef = useRef<HTMLDivElement>(null);
   const voiceRecorder = useVoiceRecorder();
   const { status: connStatus, latency: connLatency } = useConnectivity();
 
@@ -691,7 +690,7 @@ const ChatRoom = () => {
     return items;
   }, [messages, systemEvents]);
 
-  // Virtualizer for message list
+  // Virtualizer for message list — use scrollMargin for padding
   const virtualizer = useVirtualizer({
     count: timeline.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -702,15 +701,20 @@ const ChatRoom = () => {
   // Smart auto-scroll: only scroll if user is near the bottom
   const isNearBottomRef = useRef(true);
   const prevCountRef = useRef(0);
-  const userScrolledUpRef = useRef(false); // true when user manually scrolled away from bottom
-  const justSentRef = useRef(false); // force scroll on own send
+  const userScrolledUpRef = useRef(false);
+  const justSentRef = useRef(false);
   const [newMsgCount, setNewMsgCount] = useState(0);
   const hasInitialScrolled = useRef(false);
+  const lastTotalSizeRef = useRef(0);
 
+  // Core scroll-to-bottom using native scrollTo (more reliable than virtualizer.scrollToIndex)
   const scrollToBottomInternal = useCallback((behavior: ScrollBehavior = "auto") => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior });
+    // Use rAF to wait for layout
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior });
+    });
     isNearBottomRef.current = true;
     userScrolledUpRef.current = false;
   }, []);
@@ -733,27 +737,32 @@ const ChatRoom = () => {
   useEffect(() => {
     if (timeline.length > 0 && !hasInitialScrolled.current) {
       hasInitialScrolled.current = true;
+      // Triple-rAF to ensure virtualizer has fully measured all items
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          scrollToBottomInternal("auto");
-          setNewMsgCount(0);
+          requestAnimationFrame(() => {
+            scrollToBottomInternal("auto");
+            setNewMsgCount(0);
+          });
         });
       });
     }
   }, [timeline.length, scrollToBottomInternal]);
 
-  // Keep bottom anchored when message/media height changes (decrypt/load)
+  // When virtualizer total size changes (media decrypts, images load, etc.),
+  // keep scroll pinned to bottom IF user was already at bottom.
+  // This is the KEY fix: we watch getTotalSize() changes, not ResizeObserver.
+  const totalSize = virtualizer.getTotalSize();
   useEffect(() => {
-    const contentEl = virtualContentRef.current;
-    if (!contentEl) return;
-    const ro = new ResizeObserver(() => {
+    const sizeDiff = totalSize - lastTotalSizeRef.current;
+    if (lastTotalSizeRef.current > 0 && sizeDiff !== 0) {
       if (!userScrolledUpRef.current && isNearBottomRef.current) {
-        requestAnimationFrame(() => scrollToBottomInternal("auto"));
+        // Content height changed while user is at bottom → re-anchor
+        scrollToBottomInternal("auto");
       }
-    });
-    ro.observe(contentEl);
-    return () => ro.disconnect();
-  }, [scrollToBottomInternal]);
+    }
+    lastTotalSizeRef.current = totalSize;
+  }, [totalSize, scrollToBottomInternal]);
 
   // Handle new messages arriving
   useEffect(() => {
@@ -761,10 +770,10 @@ const ChatRoom = () => {
     if (addedCount > 0) {
       if (justSentRef.current) {
         justSentRef.current = false;
-        requestAnimationFrame(() => scrollToBottomInternal("smooth"));
+        scrollToBottomInternal("smooth");
         setNewMsgCount(0);
       } else if (!userScrolledUpRef.current && isNearBottomRef.current) {
-        requestAnimationFrame(() => scrollToBottomInternal("smooth"));
+        scrollToBottomInternal("smooth");
         setNewMsgCount(0);
       } else {
         setNewMsgCount((prev) => prev + addedCount);
@@ -1058,7 +1067,7 @@ const ChatRoom = () => {
           </div>
         )}
 
-        <div ref={virtualContentRef} style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative', overflowAnchor: 'none' }}>
+        <div style={{ height: `${totalSize}px`, width: '100%', position: 'relative', overflowAnchor: 'none' }}>
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const item = timeline[virtualItem.index];
             return (
