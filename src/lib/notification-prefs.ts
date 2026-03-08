@@ -70,11 +70,12 @@ export function getAlertDecision(roomId: string): AlertDecision {
 
   // DND overrides everything
   if (prefs.dndEnabled && isInDndWindow(prefs.dndStart, prefs.dndEnd)) {
-    return { showNotification: false, playSound: false, vibrate: false };
+    return { showNotification: false, showToast: false, playSound: false, vibrate: false };
   }
 
   return {
     showNotification: prefs.notifications,
+    showToast: prefs.toastNotifications,
     playSound: prefs.soundMode === "volume",
     vibrate: prefs.soundMode === "vibrate",
   };
