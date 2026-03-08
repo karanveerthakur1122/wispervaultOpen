@@ -481,11 +481,20 @@ const MessageBubble = memo(({
 
           {msg.replyTo && (
             <div
-              className={`mb-1.5 border-l-2 border-primary/40 pl-2 py-1 rounded-r cursor-pointer ${msg.isOwn ? "bg-primary-foreground/10" : "bg-muted/40"}`}
+              className={`mb-1.5 rounded-lg cursor-pointer overflow-hidden backdrop-blur-sm transition-colors active:opacity-80 ${
+                msg.isOwn
+                  ? "bg-primary-foreground/[0.08] border border-primary-foreground/[0.08]"
+                  : "bg-muted/50 border border-border/30"
+              }`}
               onClick={(e) => { e.stopPropagation(); onScrollToMessage(msg.replyTo!.messageId); }}
             >
-              <p className="text-[10px] font-medium text-primary/80">{msg.replyTo.username}</p>
-              <p className={`text-[11px] truncate ${msg.isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>{msg.replyTo.preview}</p>
+              <div className="flex items-stretch gap-0">
+                <div className={`w-[3px] flex-shrink-0 rounded-l-lg ${msg.isOwn ? "bg-primary-foreground/40" : "bg-primary/60"}`} />
+                <div className="flex-1 min-w-0 px-2.5 py-1.5">
+                  <p className={`text-[10px] font-semibold leading-tight ${msg.isOwn ? "text-primary-foreground/70" : "text-primary/80"}`}>{msg.replyTo.username}</p>
+                  <p className={`text-[11px] truncate leading-tight mt-0.5 ${msg.isOwn ? "text-primary-foreground/50" : "text-muted-foreground/70"}`}>{msg.replyTo.preview}</p>
+                </div>
+              </div>
             </div>
           )}
 
