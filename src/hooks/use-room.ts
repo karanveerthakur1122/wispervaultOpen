@@ -141,12 +141,7 @@ export function useRoom(config: RoomConfig | null) {
     }
   }, [flushPendingMessages]);
 
-  useEffect(() => {
-    if (!config) return;
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, [config?.roomId]);
+  // Notification permission is now handled by NotificationPermissionBanner UI
 
   const showNotification = useCallback((title: string, options?: NotificationOptions) => {
     if (!("Notification" in window)) return;
