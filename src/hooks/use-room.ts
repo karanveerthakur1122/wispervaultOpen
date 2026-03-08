@@ -613,8 +613,9 @@ export function useRoom(config: RoomConfig | null) {
     }
   }, [config, enqueueToQueue]);
 
-  // Channel ref exposed for typing indicator hook
-  const getChannel = useCallback(() => channelRef.current, []);
+  // Expose channel for typing indicator hook
+  const [exposedChannel, setExposedChannel] = useState<RealtimeChannel | null>(null);
+  useEffect(() => { setExposedChannel(channelRef.current); }, [isConnected]);
 
   const endChat = useCallback(async () => {
     if (!config || !channelRef.current) return;
