@@ -239,6 +239,17 @@ export function useRoom(config: RoomConfig | null) {
         .single();
       if (presenceData) presenceIdRef.current = presenceData.id;
 
+      // Create or upsert session token for server-side sender validation
+      const { data: sessionData } = await supabase
+        .from("room_sessions")
+        .upsert(
+          { room_id: config.roomId, username: config.username },
+          { onConflict: "room_id,username" }
+        )
+        .select("session_token")
+        .single();
+      if (sessionData) sessionTokenRef.current = sessionData.session_token;
+
       const staleThreshold = new Date(Date.now() - 60 * 1000).toISOString();
       await supabase.from("presence").delete()
         .eq("room_id", config.roomId)
