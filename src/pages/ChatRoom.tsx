@@ -169,19 +169,36 @@ ChatHeader.displayName = "ChatHeader";
 // ─── Notification Permission Banner ──────────────────────────────────────────
 const NotificationPermissionBanner = memo(({ topOffset }: { topOffset: number }) => {
   const [permState, setPermState] = useState<"default" | "denied" | "granted" | "unsupported">("granted");
+  const [dismissed, setDismissed] = useState(false);
 
+  // Poll permission status every 2s to detect changes from browser settings
   useEffect(() => {
     if (!("Notification" in window)) {
       setPermState("unsupported");
       return;
     }
-    setPermState(Notification.permission as "default" | "denied" | "granted");
+    const sync = () => {
+      const current = Notification.permission as "default" | "denied" | "granted";
+      setPermState(prev => {
+        if (prev !== current) setDismissed(false); // re-show banner on state change
+        return current;
+      });
+    };
+    sync();
+    const id = setInterval(sync, 2000);
+    // Also re-check on visibility change (user returns from settings)
+    const onVis = () => { if (!document.hidden) sync(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVis); };
   }, []);
 
   const handleAllow = useCallback(() => {
     if (!("Notification" in window)) return;
     if (Notification.permission === "denied") {
-      // Can't re-prompt when denied — guide user to browser settings
+      toast("Notifications are blocked", {
+        description: "Tap your browser's lock icon (🔒) → Site settings → Allow notifications, then come back.",
+        duration: 6000,
+      });
       return;
     }
     Notification.requestPermission().then((result) => {
@@ -189,7 +206,7 @@ const NotificationPermissionBanner = memo(({ topOffset }: { topOffset: number })
     });
   }, []);
 
-  if (permState === "granted" || permState === "unsupported") return null;
+  if (permState === "granted" || permState === "unsupported" || dismissed) return null;
 
   const isBlocked = permState === "denied";
 
@@ -206,18 +223,16 @@ const NotificationPermissionBanner = memo(({ topOffset }: { topOffset: number })
         <Bell className={`w-3.5 h-3.5 flex-shrink-0 ${isBlocked ? "text-destructive" : "text-primary"}`} />
         <p className="text-[11px] text-foreground/80 flex-1">
           {isBlocked
-            ? "Notifications are blocked. Tap your browser's lock icon (🔒) → Site settings → Allow notifications."
+            ? "Notifications are blocked. Tap 🔒 → Site settings → Allow notifications."
             : "Enable notifications to know when new messages arrive"}
         </p>
-        {!isBlocked && (
-          <button
-            onClick={handleAllow}
-            className="text-[11px] font-semibold text-primary px-2.5 py-1 rounded-lg bg-primary/10 active:bg-primary/20 transition-colors flex-shrink-0"
-          >
-            Allow
-          </button>
-        )}
-        <button onClick={() => setPermState("granted")} className="text-muted-foreground/60 active:text-foreground transition-colors p-0.5">
+        <button
+          onClick={handleAllow}
+          className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors flex-shrink-0 ${isBlocked ? "text-destructive bg-destructive/10 active:bg-destructive/20" : "text-primary bg-primary/10 active:bg-primary/20"}`}
+        >
+          {isBlocked ? "How to fix" : "Allow"}
+        </button>
+        <button onClick={() => setDismissed(true)} className="text-muted-foreground/60 active:text-foreground transition-colors p-0.5">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
