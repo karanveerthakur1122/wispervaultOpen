@@ -94,6 +94,7 @@ export function useRoom(config: RoomConfig | null) {
   const [isRoomLocked, setIsRoomLocked] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIdRef = useRef<string | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
   const messagesRef = useRef<DecryptedMessage[]>([]);
   const setupCompleteRef = useRef(false);
   const offlineQueueRef = useRef<Array<{ text: string; file?: File; replyTo?: ReplyInfo; tempId: string }>>([]);
