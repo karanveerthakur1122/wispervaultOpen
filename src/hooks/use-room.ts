@@ -4,6 +4,7 @@ import { encryptFile } from "@/lib/crypto";
 import { workerEncrypt, workerDecrypt, workerDecryptBatch, workerEncryptFile } from "@/lib/crypto-worker-api";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useMessageQueue, type QueueItemStatus } from "@/hooks/use-message-queue";
 
 // Pre-warm crypto key by triggering a dummy encrypt on the worker
 function preWarmCryptoKey(password: string, salt: string) {
