@@ -158,6 +158,7 @@ const RoomInfoPanel = ({
   // Notification & sound preferences (persisted per room via utility)
   const initPrefs = getRoomPrefs(roomId);
   const [notificationsOn, setNotificationsOn] = useState(initPrefs.notifications);
+  const [toastOn, setToastOn] = useState(initPrefs.toastNotifications);
   const [soundMode, setSoundMode] = useState<SoundMode>(initPrefs.soundMode);
   const [dndEnabled, setDndEnabled] = useState(initPrefs.dndEnabled);
   const [dndStart, setDndStart] = useState(initPrefs.dndStart);
