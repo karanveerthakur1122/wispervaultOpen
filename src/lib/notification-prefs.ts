@@ -13,6 +13,7 @@ export interface RoomPrefs {
 
 const DEFAULTS: RoomPrefs = {
   notifications: true,
+  toastNotifications: true,
   soundMode: "volume",
   dndEnabled: false,
   dndStart: "22:00",
