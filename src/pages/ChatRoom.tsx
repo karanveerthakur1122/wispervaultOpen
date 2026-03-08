@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
+  Send, LogOut, Users, Shield, Paperclip, Pin, Smile, Bell,
   Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock, Moon
 } from "lucide-react";
 import { getRoomPrefs, isInDndWindow } from "@/lib/notification-prefs";
@@ -165,6 +165,50 @@ const ChatHeader = memo(({
   );
 });
 ChatHeader.displayName = "ChatHeader";
+
+// ─── Notification Permission Banner ──────────────────────────────────────────
+const NotificationPermissionBanner = memo(({ topOffset }: { topOffset: number }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      setVisible(true);
+    }
+  }, []);
+
+  const handleAllow = useCallback(() => {
+    Notification.requestPermission().then(() => setVisible(false));
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed left-0 right-0 z-[997] overflow-hidden"
+      style={{ top: `${topOffset}px` }}
+    >
+      <div className="flex items-center gap-2.5 px-4 py-2 bg-primary/8 border-b border-primary/15">
+        <Bell className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+        <p className="text-[11px] text-foreground/80 flex-1">Enable notifications to know when new messages arrive</p>
+        <button
+          onClick={handleAllow}
+          className="text-[11px] font-semibold text-primary px-2.5 py-1 rounded-lg bg-primary/10 active:bg-primary/20 transition-colors flex-shrink-0"
+        >
+          Allow
+        </button>
+        <button onClick={() => setVisible(false)} className="text-muted-foreground/60 active:text-foreground transition-colors p-0.5">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </motion.div>
+  );
+});
+NotificationPermissionBanner.displayName = "NotificationPermissionBanner";
 
 // ─── Chat Input ──────────────────────────────────────────────────────────────
 interface ChatInputProps {
@@ -1082,6 +1126,9 @@ const ChatRoom = () => {
         isEndingChat={isEndingChat}
         setIsEndingChat={setIsEndingChat}
       />
+
+      {/* Notification permission banner */}
+      <NotificationPermissionBanner topOffset={headerHeight} />
 
       <AnimatePresence>
         {connStatus === "blocked" && (
