@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { encryptFile } from "@/lib/crypto";
+import { getAlertDecision } from "@/lib/notification-prefs";
+import { haptic } from "@/lib/haptics";
 import { workerEncrypt, workerDecrypt, workerDecryptBatch, workerEncryptFile } from "@/lib/crypto-worker-api";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -157,6 +159,20 @@ export function useRoom(config: RoomConfig | null) {
       try { new Notification(title, options); } catch {}
     }
   }, []);
+
+  /** Preference-aware alert: checks notifications, sound mode, and DND schedule. */
+  const alertForMessage = useCallback((title: string, options?: NotificationOptions) => {
+    if (!config) return;
+    const decision = getAlertDecision(config.roomId);
+    if (decision.showNotification) {
+      showNotification(title, { ...options, silent: !decision.playSound });
+    }
+    if (decision.vibrate) {
+      haptic.medium();
+    } else if (decision.playSound) {
+      haptic.light();
+    }
+  }, [config, showNotification]);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -321,9 +337,9 @@ export function useRoom(config: RoomConfig | null) {
               enqueueMessage(newMsg);
               if (msg.is_pinned) setPinnedMessage(newMsg);
               if (!newMsg.isOwn) {
-                showNotification(newMsg.username, {
+                alertForMessage(newMsg.username, {
                   body: newMsg.mediaType ? "Sent a media file" : newMsg.text.slice(0, 100),
-                  tag: `msg-${newMsg.id}`, silent: false,
+                  tag: `msg-${newMsg.id}`,
                 });
               }
             } catch {}
@@ -342,7 +358,7 @@ export function useRoom(config: RoomConfig | null) {
               const { text, replyTo } = parseReply(rawText);
               setMessages((prev) => prev.map((m) => m.id !== msg.id ? m : { ...m, text, isPinned: msg.is_pinned, replyTo }));
               if (msg.sender_name !== config.username) {
-                showNotification(`${msg.sender_name} edited a message`, { body: text.slice(0, 100), tag: `edit-${msg.id}`, silent: false });
+                alertForMessage(`${msg.sender_name} edited a message`, { body: text.slice(0, 100), tag: `edit-${msg.id}` });
               }
               if (msg.is_pinned) {
                 const existing = messagesRef.current.find((m) => m.id === msg.id);
@@ -373,7 +389,7 @@ export function useRoom(config: RoomConfig | null) {
               return { ...m, reactions: [...m.reactions, { id: r.id, emoji: r.emoji, senderName: r.sender_name }] };
             }));
             if (r.sender_name !== config.username) {
-              showNotification(`${r.sender_name} reacted ${r.emoji}`, { tag: `reaction-${r.id}`, silent: false });
+              alertForMessage(`${r.sender_name} reacted ${r.emoji}`, { tag: `reaction-${r.id}` });
             }
           }
         )
