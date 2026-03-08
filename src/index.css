@@ -168,13 +168,29 @@
 }
 
 /* Reply highlight animation */
-@keyframes reply-highlight {
-  0% { background-color: hsla(var(--primary) / 0.25); }
-  100% { background-color: transparent; }
-}
 .reply-highlight {
-  animation: reply-highlight 0.6s ease-out;
-  border-radius: var(--radius);
+  position: relative;
+}
+
+.reply-highlight::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: hsla(var(--primary) / 0.15);
+  animation: replyFade 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes replyFade {
+  0% {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
 }
 
 /* Typing indicator dot animation */
