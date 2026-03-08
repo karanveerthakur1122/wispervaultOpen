@@ -596,7 +596,15 @@ const MessageBubble = memo(({
         {isShowingReactions && menuPos && createPortal(
           <div className="fixed inset-0 z-[99998]" onClick={() => onSetActiveReaction(null)}>
             <div
-              style={{ position: 'fixed', top: Math.max(8, menuPos.y - 48), ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
+              ref={(el) => {
+                if (el) {
+                  const h = el.getBoundingClientRect().height;
+                  const maxY = window.innerHeight - h - 8;
+                  const clampedY = Math.max(8, Math.min(menuPos.y - 48, maxY));
+                  el.style.top = `${clampedY}px`;
+                }
+              }}
+              style={{ position: 'fixed', ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
               className="bg-card/95 backdrop-blur-xl rounded-full px-2 py-1 flex gap-0.5 menu-enter shadow-xl border border-border/30" onClick={(e) => e.stopPropagation()}>
               {QUICK_EMOJIS.map((emoji) => (
                 <button key={emoji} onClick={() => { onReaction(msg.id, emoji); onSetActiveReaction(null); }} className="text-lg active:scale-125 transition-transform p-1 rounded-full active:bg-secondary/50">{emoji}</button>
@@ -610,7 +618,15 @@ const MessageBubble = memo(({
         {isShowingContext && menuPos && createPortal(
           <div className="fixed inset-0 z-[99998]" onClick={() => onSetContextMenu(null)}>
             <div
-              style={{ position: 'fixed', top: menuPos.y, ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
+              ref={(el) => {
+                if (el) {
+                  const h = el.getBoundingClientRect().height;
+                  const maxY = window.innerHeight - h - 8;
+                  const clampedY = Math.max(8, Math.min(menuPos.y, maxY));
+                  el.style.top = `${clampedY}px`;
+                }
+              }}
+              style={{ position: 'fixed', ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
               className="bg-card/95 backdrop-blur-xl rounded-xl py-1.5 min-w-[150px] menu-enter shadow-xl border border-border/30" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { onReply(msg); onSetContextMenu(null); }} className="w-full text-left px-3 py-2.5 text-[13px] text-foreground active:bg-secondary/40 flex items-center gap-2.5 transition-colors"><Reply className="w-3.5 h-3.5 text-muted-foreground" /> Reply</button>
               <button onClick={() => { onSetActiveReaction(msg.id); onSetContextMenu(null); }} className="w-full text-left px-3 py-2.5 text-[13px] text-foreground active:bg-secondary/40 flex items-center gap-2.5 transition-colors"><Smile className="w-3.5 h-3.5 text-muted-foreground" /> React</button>
