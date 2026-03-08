@@ -194,21 +194,44 @@ export function useRoom(config: RoomConfig | null) {
     } catch {}
   }, []);
 
-  /** Preference-aware alert: checks notifications, sound mode, and DND schedule. */
+  // ── Notification grouping for rapid messages ──
+  const pendingNotifCountRef = useRef(0);
+  const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushGroupedNotification = useCallback(() => {
+    notifTimerRef.current = null;
+    const count = pendingNotifCountRef.current;
+    pendingNotifCountRef.current = 0;
+    if (count <= 0) return;
+    const title = count === 1 ? "New message" : `${count} new messages`;
+    showNotification(title, { body: count === 1 ? "You received a new message" : `You have ${count} unread messages`, silent: true, tag: "grouped-messages" });
+  }, [showNotification]);
+
+  /** Preference-aware alert: checks notifications, sound mode, DND, and page visibility. */
   const alertForMessage = useCallback((title: string, options?: NotificationOptions) => {
     if (!config) return;
     const decision = getAlertDecision(config.roomId);
-    if (decision.showNotification) {
-      showNotification(title, { ...options, silent: true }); // always silent push; we play our own sound
+
+    // Only show system notification when page is NOT visible (WhatsApp-style)
+    const pageHidden = typeof document !== "undefined" && document.visibilityState !== "visible";
+
+    if (decision.showNotification && pageHidden) {
+      // Group rapid notifications
+      pendingNotifCountRef.current += 1;
+      if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
+      notifTimerRef.current = setTimeout(flushGroupedNotification, 400);
     }
-    if (decision.playSound) {
-      playNotificationSound();
-      haptic.light();
+
+    if (pageHidden) {
+      if (decision.playSound) {
+        playNotificationSound();
+        haptic.light();
+      }
+      if (decision.vibrate) {
+        haptic.medium();
+      }
     }
-    if (decision.vibrate) {
-      haptic.medium();
-    }
-  }, [config, showNotification, playNotificationSound]);
+  }, [config, showNotification, playNotificationSound, flushGroupedNotification]);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
