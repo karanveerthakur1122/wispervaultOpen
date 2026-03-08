@@ -149,6 +149,59 @@ interface Props {
   onToggleLock: () => void;
 }
 
+/** Notification permission toggle with auto-prompt */
+const NotificationToggle = () => {
+  const [perm, setPerm] = useState<string>(() =>
+    "Notification" in window ? Notification.permission : "unsupported"
+  );
+
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+    const iv = setInterval(() => setPerm(Notification.permission), 2000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const handleToggle = useCallback(async () => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      toast({ title: "To disable", description: "Use your browser's site settings to block notifications." });
+      return;
+    }
+    if (Notification.permission === "default") {
+      const result = await Notification.requestPermission();
+      setPerm(result);
+    } else {
+      toast({ title: "Notifications blocked", description: "Tap your browser's lock icon (🔒) → Site settings → Allow notifications.", variant: "destructive" });
+    }
+  }, []);
+
+  if (perm === "unsupported") return null;
+
+  const isGranted = perm === "granted";
+
+  return (
+    <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        {isGranted ? (
+          <Bell className="w-4 h-4 text-primary" />
+        ) : (
+          <BellOff className="w-4 h-4 text-muted-foreground" />
+        )}
+        <div>
+          <p className="text-sm font-medium text-foreground">Notifications</p>
+          <p className="text-[11px] text-muted-foreground">
+            {isGranted ? "Push notifications enabled" : perm === "denied" ? "Blocked by browser" : "Tap to enable"}
+          </p>
+        </div>
+      </div>
+      <Switch
+        checked={isGranted}
+        onCheckedChange={handleToggle}
+      />
+    </div>
+  );
+};
+
 const RoomInfoPanel = ({
   open, onClose, roomId, onlineUsers, messages, isCreator, currentUsername, onKickUser, onMediaClick, isRoomLocked, onToggleLock,
 }: Props) => {
