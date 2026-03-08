@@ -20,6 +20,7 @@ import { useRoom, type DecryptedMessage, type ReplyInfo, type SystemEvent } from
 import { supabase } from "@/integrations/supabase/client";
 import { workerDecryptFile } from "@/lib/crypto-worker-api";
 import { deriveKey } from "@/lib/crypto";
+import ZoomableImage from "@/components/ZoomableImage";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -1215,7 +1216,7 @@ const ChatRoom = () => {
               <audio src={lightboxData.url} controls controlsList="nodownload" className="w-full" autoPlay />
             </div>
           ) : (
-            <img src={lightboxData.url} alt="Full size" className="max-w-[95vw] max-h-[90vh] object-contain rounded-xl" onClick={(e) => e.stopPropagation()} />
+            <ZoomableImage src={lightboxData.url} alt="Full size" className="max-w-[95vw] max-h-[90vh] object-contain rounded-xl" />
           )}
         </div>,
         document.body
