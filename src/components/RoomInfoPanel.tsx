@@ -329,22 +329,6 @@ const RoomInfoPanel = ({
                 />
               </div>
 
-              {/* In-app toast toggle */}
-              <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MessageSquare className={`w-4 h-4 ${toastOn ? "text-primary" : "text-muted-foreground"}`} />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">In-App Toasts</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {toastOn ? "Show toast banners for new messages" : "In-app toasts are off"}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={toastOn}
-                  onCheckedChange={(v) => { setToastOn(v); setRoomPref(roomId, "toastNotifications", v); }}
-                />
-              </div>
 
               {/* Sound mode selector */}
               <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
