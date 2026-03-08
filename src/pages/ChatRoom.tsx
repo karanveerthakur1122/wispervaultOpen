@@ -669,7 +669,7 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock,
+    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage,
   } = useRoom(roomConfig);
 
   const [showRoomInfo, setShowRoomInfo] = useState(false);
