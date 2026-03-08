@@ -114,15 +114,15 @@ export function useRoom(config: RoomConfig | null) {
     setMessages((prev) => {
       let next = prev;
       for (const newMsg of batch) {
-        // Dedupe
+        // Dedupe by real id
         if (next.some((m) => m.id === newMsg.id)) continue;
-        // Replace optimistic
+        // Replace optimistic (temp-*) message by matching text + username
         const optimisticIdx = next.findIndex(
           (m) => m.pending && m.text === newMsg.text && m.username === newMsg.username
         );
         if (optimisticIdx >= 0) {
           next = [...next];
-          next[optimisticIdx] = newMsg;
+          next[optimisticIdx] = { ...newMsg, sendStatus: "sent", pending: false };
         } else {
           next = [...next, newMsg];
         }
