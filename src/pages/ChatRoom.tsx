@@ -78,69 +78,67 @@ const ChatHeader = memo(({
   return (
     <header
       ref={headerRef}
-      className="fixed top-0 left-0 right-0 z-[1000] glass border-b border-border/50 px-4 py-3 flex items-center justify-between select-none"
-      style={{ backdropFilter: 'blur(20px)', willChange: 'transform' }}
+      className="fixed top-0 left-0 right-0 z-[1000] glass-subtle px-4 py-2.5 flex items-center justify-between select-none border-b border-border/40"
+      style={{ willChange: 'transform' }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary/15 border-2 border-primary/30 flex items-center justify-center">
-          <span className="text-sm font-bold text-primary">{onlineUsers.length}</span>
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Online count badge */}
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-semibold text-primary">{onlineUsers.length}</span>
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <button onClick={onShowRoomInfo} className="text-sm font-semibold text-foreground font-mono tracking-wider hover:text-primary transition-colors active:scale-95">
+            <button onClick={onShowRoomInfo} className="text-sm font-semibold text-foreground font-mono tracking-wider active:opacity-70 transition-opacity truncate">
               {roomId}
             </button>
-            {isRoomLocked && <Lock className="w-3.5 h-3.5 text-amber-400" />}
+            {isRoomLocked && <Lock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
             <SignalBars latency={connLatency} status={connStatus} size="sm" />
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Users className="w-3 h-3" /> {onlineUsers.length} online
-            {!isConnected && <span className="text-destructive ml-1">· connecting...</span>}
-          </p>
-          {roomCreatedAt && (
-            <p className="text-[10px] text-muted-foreground/50 font-mono flex items-center gap-1">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Live {elapsed}
-              <span className="mx-0.5">·</span>
-              {new Date(roomCreatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
-            </p>
-          )}
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span>{onlineUsers.length} online</span>
+            {!isConnected && <span className="text-destructive">· connecting</span>}
+            {roomCreatedAt && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <span className="text-muted-foreground/60">{elapsed}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
+
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`rounded-xl gap-1 text-xs ${
+          <button
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors active:scale-95 ${
               isCreator
-                ? "text-destructive hover:text-destructive hover:bg-destructive/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                ? "text-destructive/80 active:bg-destructive/10"
+                : "text-muted-foreground active:bg-secondary/50"
             }`}
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
             {isCreator ? "End" : "Leave"}
-          </Button>
+          </button>
         </AlertDialogTrigger>
-        <AlertDialogContent className="glass border-border/50 max-w-[320px] rounded-2xl">
+        <AlertDialogContent className="bg-card border-border/40 max-w-[300px] rounded-2xl shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">
+            <AlertDialogTitle className="text-foreground text-base">
               {isCreator ? "End Chat?" : "Leave Room?"}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
+            <AlertDialogDescription className="text-muted-foreground text-sm">
               {isCreator
-                ? "This will permanently destroy all messages and data for everyone in this room. This cannot be undone."
-                : "You will leave this room. You can rejoin later with the invite link."}
+                ? "This will permanently destroy all messages and data for everyone."
+                : "You will leave this room. You can rejoin later."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl border-border/50">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl border-border/40 text-sm">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={isCreator ? async () => { setIsEndingChat(true); await onEndChat(); } : onLeaveRoom}
-              className={`rounded-xl ${isCreator ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}`}
+              className={`rounded-xl text-sm ${isCreator ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}`}
             >
               {isCreator ? "End Chat" : "Leave"}
             </AlertDialogAction>
@@ -192,22 +190,22 @@ const ChatInput = memo(({
     <div className="fixed left-0 right-0 bottom-0 z-[1000]">
       {/* File preview */}
       {selectedFile && (
-        <div className="glass border-t border-border/50 px-4 py-2">
+        <div className="glass-subtle border-t border-border/30 px-4 py-2.5">
           <div className="flex items-center gap-3">
             {filePreviewUrl && selectedFile.type.startsWith("image/") ? (
-              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-secondary/30">
+              <div className="w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 bg-secondary/30">
                 <img src={filePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
               </div>
             ) : filePreviewUrl && selectedFile.type.startsWith("video/") ? (
-              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-secondary/30 relative">
+              <div className="w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 bg-secondary/30 relative">
                 <video src={filePreviewUrl} className="w-full h-full object-cover" muted />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <span className="text-white text-[10px]">▶</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                  <Play className="w-3.5 h-3.5 text-foreground ml-0.5" />
                 </div>
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-secondary/30 flex items-center justify-center flex-shrink-0">
-                <ImageIcon className="w-4 h-4 text-primary" />
+              <div className="w-11 h-11 rounded-xl bg-secondary/40 flex items-center justify-center flex-shrink-0">
+                <ImageIcon className="w-4 h-4 text-muted-foreground" />
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -216,7 +214,7 @@ const ChatInput = memo(({
                 {(selectedFile.size / 1024).toFixed(0)}KB · {selectedFile.type.split("/")[0]}
               </p>
             </div>
-            <button onClick={onClearFile} className="text-muted-foreground p-1">
+            <button onClick={onClearFile} className="text-muted-foreground/60 p-1.5 rounded-lg active:bg-secondary/40">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -225,14 +223,14 @@ const ChatInput = memo(({
 
       {/* Reply preview */}
       {replyTo && (
-        <div className="glass border-t border-border/50 px-4 py-2 flex items-center gap-2">
-          <Reply className="w-4 h-4 text-primary" />
+        <div className="glass-subtle border-t border-border/30 px-4 py-2 flex items-center gap-2.5">
+          <div className="w-0.5 h-8 rounded-full bg-primary flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-primary">{replyTo.username}</p>
-            <p className="text-xs text-muted-foreground truncate">{replyTo.preview}</p>
+            <p className="text-[11px] font-medium text-primary">{replyTo.username}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{replyTo.preview}</p>
           </div>
-          <button onClick={onClearReply} className="text-muted-foreground">
-            <X className="w-4 h-4" />
+          <button onClick={onClearReply} className="text-muted-foreground/60 p-1.5 rounded-lg active:bg-secondary/40">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -243,56 +241,55 @@ const ChatInput = memo(({
       )}
 
       {/* Input bar */}
-      <div className="glass border-t border-border/50 p-3 relative" style={{ willChange: 'transform' }}>
+      <div className="glass-subtle border-t border-border/30 px-3 py-2.5" style={{ willChange: 'transform' }}>
         {voiceRecorder.previewUrl ? (
           <div className="flex gap-2 items-center">
-            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-destructive active:scale-90 transition-transform" onClick={voiceRecorder.discardPreview}>
+            <button className="h-10 w-10 rounded-full flex items-center justify-center text-destructive active:scale-90 transition-transform active:bg-destructive/10" onClick={voiceRecorder.discardPreview}>
               <Trash2 className="w-5 h-5" />
-            </Button>
+            </button>
             <div className="flex-1 flex flex-col gap-0.5">
               <PlaybackWaveform src={voiceRecorder.previewUrl} isOwn={false} />
               <span className="text-[10px] text-muted-foreground text-center">{formatDuration(voiceRecorder.recordedDuration)}</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform" onClick={voiceRecorder.reRecord} title="Re-record">
+            <button className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground active:scale-90 transition-transform" onClick={voiceRecorder.reRecord} title="Re-record">
               <RotateCcw className="w-4 h-4" />
-            </Button>
-            <Button onClick={onVoicePreviewSend} disabled={isSending} size="icon" className="h-11 w-11 rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform">
+            </button>
+            <button onClick={onVoicePreviewSend} disabled={isSending} className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground active:scale-90 transition-transform disabled:opacity-40">
               {isSending ? <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
+            </button>
           </div>
         ) : voiceRecorder.isRecording ? (
           <div className="flex gap-2 items-center">
-            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-destructive active:scale-90 transition-transform" onClick={voiceRecorder.cancel}>
+            <button className="h-10 w-10 rounded-full flex items-center justify-center text-destructive active:scale-90 transition-transform" onClick={voiceRecorder.cancel}>
               <X className="w-5 h-5" />
-            </Button>
+            </button>
             <div className="flex-1 flex items-center gap-3 px-2">
               {voiceRecorder.isPaused ? (
-                <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-muted-foreground flex-shrink-0" />
               ) : (
-                <span className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-destructive animate-pulse flex-shrink-0" />
               )}
               <RecordingWaveform stream={voiceRecorder.stream} />
-              <span className="text-sm font-mono text-foreground flex-shrink-0">{formatDuration(voiceRecorder.duration)}</span>
+              <span className="text-sm font-mono text-foreground/80 flex-shrink-0">{formatDuration(voiceRecorder.duration)}</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground active:scale-90 transition-transform" onClick={voiceRecorder.isPaused ? voiceRecorder.resume : voiceRecorder.pause}>
+            <button className="h-10 w-10 rounded-full flex items-center justify-center text-foreground active:scale-90 transition-transform" onClick={voiceRecorder.isPaused ? voiceRecorder.resume : voiceRecorder.pause}>
               {voiceRecorder.isPaused ? <Play className="w-5 h-5 ml-0.5" /> : <Pause className="w-5 h-5" />}
-            </Button>
-            <Button onClick={onVoiceFinish} size="icon" className="h-11 w-11 rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform">
+            </button>
+            <button onClick={onVoiceFinish} className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground active:scale-90 transition-transform">
               <Check className="w-5 h-5" />
-            </Button>
+            </button>
           </div>
         ) : (
-          <div className="flex gap-1.5 items-center">
-            <Button
-              variant="ghost" size="icon"
-              className={`h-9 w-9 rounded-full active:scale-90 transition-transform flex-shrink-0 ${showEmojiPicker ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+          <div className="flex gap-1 items-center">
+            <button
+              className={`h-10 w-10 rounded-full flex items-center justify-center active:scale-90 transition-all flex-shrink-0 ${showEmojiPicker ? "text-primary bg-primary/10" : "text-muted-foreground/60"}`}
               onMouseDown={(e) => { e.preventDefault(); inputRef.current?.blur(); onToggleEmoji(); }}
             >
-              <Smile className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground active:scale-90 transition-transform flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
-              <Paperclip className="w-4 h-4" />
-            </Button>
+              <Smile className="w-5 h-5" />
+            </button>
+            <button className="h-10 w-10 rounded-full flex items-center justify-center text-muted-foreground/60 active:scale-90 transition-transform flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
+              <Paperclip className="w-5 h-5" />
+            </button>
             <input ref={fileInputRef} type="file" accept="image/*,image/gif,video/*,audio/*,.pdf,.doc,.docx" className="hidden" onChange={onFileSelect} />
             <Input
               ref={inputRef}
@@ -300,17 +297,17 @@ const ChatInput = memo(({
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && onSend()}
               onPaste={onPaste}
-              placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
-              className="flex-1 h-11 rounded-full glass-input border-0 text-foreground placeholder:text-muted-foreground/50 px-4"
+              placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Message"}
+              className="flex-1 h-10 rounded-full bg-secondary/50 border-0 text-foreground text-[15px] placeholder:text-muted-foreground/40 px-4 focus-visible:ring-1 focus-visible:ring-primary/30"
             />
             {messageInput.trim() || selectedFile ? (
-              <Button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onSend} disabled={isSending} size="icon" className="h-11 w-11 rounded-full bg-primary text-primary-foreground disabled:opacity-30 active:scale-90 transition-transform">
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onSend} disabled={isSending} className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground disabled:opacity-30 active:scale-90 transition-transform flex-shrink-0">
                 {isSending ? <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
+              </button>
             ) : (
-              <Button onClick={() => voiceRecorder.start()} disabled={isSending} size="icon" variant="ghost" className="h-11 w-11 rounded-full text-primary active:scale-90 transition-transform">
+              <button onClick={() => voiceRecorder.start()} disabled={isSending} className="h-10 w-10 rounded-full flex items-center justify-center text-primary/70 active:scale-90 transition-transform flex-shrink-0 active:bg-primary/10">
                 <Mic className="w-5 h-5" />
-              </Button>
+              </button>
             )}
           </div>
         )}
@@ -461,49 +458,49 @@ const MessageBubble = memo(({
         className={`absolute top-1/2 -translate-y-1/2 transition-opacity ${msg.isOwn ? "left-0 -ml-8" : "right-0 -mr-8"}`}
         style={{ opacity: replyIconOpacity }}
       >
-        <Reply className="w-4 h-4 text-muted-foreground" />
+        <Reply className="w-4 h-4 text-muted-foreground/50" />
       </div>
 
-      <div ref={containerRef} className="max-w-[80%] relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-        {!msg.isOwn && <p className="text-xs font-medium mb-1 ml-1" style={{ color: msg.color }}>{msg.username}</p>}
+      <div ref={containerRef} className="max-w-[78%] relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+        {!msg.isOwn && <p className="text-[11px] font-medium mb-0.5 ml-1" style={{ color: msg.color }}>{msg.username}</p>}
         <div
-          className={`rounded-2xl px-4 py-2.5 text-sm relative ${
-            msg.isOwn ? `bg-primary text-primary-foreground rounded-br-md${msg.pending ? " opacity-70" : ""}` : "bg-secondary/60 border border-border/30 rounded-bl-md text-foreground"
-          } ${msg.isPinned ? "ring-1 ring-primary/30" : ""}`}
+          className={`rounded-[18px] px-3.5 py-2 text-[15px] leading-[1.4] relative ${
+            msg.isOwn
+              ? `bg-primary text-primary-foreground rounded-br-md${msg.pending ? " opacity-60" : ""}`
+              : "bg-secondary rounded-bl-md text-foreground"
+          } ${msg.isPinned ? "ring-1 ring-primary/20" : ""}`}
           onClick={(e) => {
             e.stopPropagation();
             if (isShowingContext) onSetContextMenu(null);
             else { setMenuPos({ x: e.clientX, y: e.clientY }); onSetContextMenu(msg.id); }
           }}
         >
-          {msg.isPinned && <Pin className="w-3 h-3 text-primary absolute -top-1 -right-1 rotate-45" />}
+          {msg.isPinned && <Pin className="w-2.5 h-2.5 text-primary absolute -top-1 -right-1 rotate-45" />}
 
           {msg.replyTo && (
             <div
-              className={`mb-2 border-l-2 border-primary/50 pl-2 py-1 rounded-r cursor-pointer ${msg.isOwn ? "bg-primary-foreground/10" : "bg-secondary/30"}`}
+              className={`mb-1.5 border-l-2 border-primary/40 pl-2 py-1 rounded-r cursor-pointer ${msg.isOwn ? "bg-primary-foreground/10" : "bg-muted/40"}`}
               onClick={(e) => { e.stopPropagation(); onScrollToMessage(msg.replyTo!.messageId); }}
             >
-              <p className="text-[10px] font-medium text-primary">{msg.replyTo.username}</p>
-              <p className={`text-xs truncate ${msg.isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{msg.replyTo.preview}</p>
+              <p className="text-[10px] font-medium text-primary/80">{msg.replyTo.username}</p>
+              <p className={`text-[11px] truncate ${msg.isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>{msg.replyTo.preview}</p>
             </div>
           )}
 
           {msg.mediaUrl && msg.mediaType && (
-            <div className="mb-2">
+            <div className="mb-1.5">
               {mediaObjectUrl ? (
                 msg.mediaType.startsWith("image/") ? (
-                  <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id, msg.mediaType!); }}>
-                    <img src={mediaObjectUrl} alt="Encrypted media" className="rounded-lg max-w-full" loading="lazy" />
-                    <div className="absolute inset-0 bg-black/0 group-active:bg-black/20 rounded-lg transition-colors flex items-center justify-center">
-                      <ZoomIn className="w-6 h-6 text-white opacity-0 group-active:opacity-80 transition-opacity" />
-                    </div>
+                  <div className="relative cursor-pointer" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id, msg.mediaType!); }}>
+                    <img src={mediaObjectUrl} alt="Encrypted media" className="rounded-xl max-w-full" loading="lazy" />
+                    <div className="absolute inset-0 rounded-xl active:bg-black/10 transition-colors" />
                   </div>
                 ) : msg.mediaType.startsWith("video/") ? (
-                  <div className="relative cursor-pointer group" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id, msg.mediaType!); }}>
-                    <video src={mediaObjectUrl} className="rounded-lg max-w-full" muted preload="metadata" />
-                    <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center group-active:bg-black/50 transition-colors">
-                      <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                        <Play className="w-6 h-6 text-white ml-0.5" />
+                  <div className="relative cursor-pointer" onClick={(e) => { e.stopPropagation(); onLightbox(mediaObjectUrl, msg.id, msg.mediaType!); }}>
+                    <video src={mediaObjectUrl} className="rounded-xl max-w-full" muted preload="metadata" />
+                    <div className="absolute inset-0 bg-background/20 rounded-xl flex items-center justify-center active:bg-background/30 transition-colors">
+                      <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
+                        <Play className="w-5 h-5 text-foreground ml-0.5" />
                       </div>
                     </div>
                   </div>
@@ -515,7 +512,7 @@ const MessageBubble = memo(({
                   <a href={mediaObjectUrl} download className="text-primary underline text-xs">Download file</a>
                 )
               ) : (
-                <button onClick={(e) => { e.stopPropagation(); decryptMedia(); }} className="flex items-center gap-2 text-xs text-primary/70 py-2">
+                <button onClick={(e) => { e.stopPropagation(); decryptMedia(); }} className="flex items-center gap-2 text-xs text-primary/60 py-1.5">
                   <ImageIcon className="w-4 h-4" />
                   {loadingMedia ? "Decrypting..." : "Tap to decrypt media"}
                 </button>
@@ -529,7 +526,7 @@ const MessageBubble = memo(({
                 <input
                   ref={editInputRef} value={editText} onChange={(e) => setEditText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { if (editText.trim()) onEdit(msg.id, editText.trim()); setIsEditing(false); } if (e.key === "Escape") setIsEditing(false); }}
-                  className="flex-1 bg-transparent border-b border-primary-foreground/30 text-sm outline-none py-0.5 min-w-0" autoFocus
+                  className="flex-1 bg-transparent border-b border-primary-foreground/30 text-[15px] outline-none py-0.5 min-w-0" autoFocus
                 />
                 <button onClick={() => { if (editText.trim()) onEdit(msg.id, editText.trim()); setIsEditing(false); }} className="p-1"><Check className="w-3.5 h-3.5" /></button>
                 <button onClick={() => setIsEditing(false)} className="p-1"><X className="w-3.5 h-3.5" /></button>
@@ -540,18 +537,20 @@ const MessageBubble = memo(({
           )}
         </div>
 
+        {/* Reactions */}
         {Object.keys(groupedReactions).length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1 ml-1">
+          <div className="flex flex-wrap gap-1 mt-1 ml-0.5">
             {Object.values(groupedReactions).map((r) => (
               <button key={r.emoji} onClick={(e) => { e.stopPropagation(); onReaction(msg.id, r.emoji); }}
-                className={`glass rounded-full px-1.5 py-0.5 text-xs flex items-center gap-0.5 ${r.names.includes(username) ? "ring-1 ring-primary/50" : ""}`}>
-                {r.emoji} {r.count > 1 && <span className="text-muted-foreground">{r.count}</span>}
+                className={`rounded-full px-1.5 py-0.5 text-xs flex items-center gap-0.5 bg-secondary/60 active:scale-105 transition-transform ${r.names.includes(username) ? "ring-1 ring-primary/40" : ""}`}>
+                {r.emoji} {r.count > 1 && <span className="text-muted-foreground text-[10px]">{r.count}</span>}
               </button>
             ))}
           </div>
         )}
 
-        <div className="flex items-center gap-1 mt-0.5 mx-1 cursor-pointer"
+        {/* Timestamp + status */}
+        <div className="flex items-center gap-1 mt-0.5 mx-0.5 cursor-pointer"
           onClick={(e) => { e.stopPropagation(); if (msg.readBy.length > 0) setShowReadBy(!showReadBy); }}>
           <p className="text-[10px] text-muted-foreground/40">
             {new Date(msg.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}
@@ -579,35 +578,40 @@ const MessageBubble = memo(({
         </div>
 
         {showReadBy && msg.readBy.length > 0 && (
-          <div className="mx-1 mt-0.5"><p className="text-[10px] text-muted-foreground/50">Seen by {msg.readBy.join(", ")}</p></div>
+          <div className="mx-0.5 mt-0.5"><p className="text-[10px] text-muted-foreground/50">Seen by {msg.readBy.join(", ")}</p></div>
         )}
 
+        {/* Quick reaction picker */}
         {isShowingReactions && menuPos && createPortal(
           <div className="fixed inset-0 z-[99998]" onClick={() => onSetActiveReaction(null)}>
             <div
               style={{ position: 'fixed', top: Math.max(8, menuPos.y - 48), ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
-              className="glass rounded-full px-2 py-1 flex gap-1 animate-scale-in backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+              className="bg-card/95 backdrop-blur-xl rounded-full px-2 py-1 flex gap-0.5 menu-enter shadow-xl border border-border/30" onClick={(e) => e.stopPropagation()}>
               {QUICK_EMOJIS.map((emoji) => (
-                <button key={emoji} onClick={() => { onReaction(msg.id, emoji); onSetActiveReaction(null); }} className="text-lg active:scale-125 transition-transform p-0.5">{emoji}</button>
+                <button key={emoji} onClick={() => { onReaction(msg.id, emoji); onSetActiveReaction(null); }} className="text-lg active:scale-125 transition-transform p-1 rounded-full active:bg-secondary/50">{emoji}</button>
               ))}
             </div>
           </div>,
           document.getElementById('portal-root')!
         )}
 
+        {/* Context menu */}
         {isShowingContext && menuPos && createPortal(
           <div className="fixed inset-0 z-[99998]" onClick={() => onSetContextMenu(null)}>
             <div
               style={{ position: 'fixed', top: menuPos.y, ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
-              className="glass rounded-xl py-1 min-w-[140px] animate-scale-in backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => { onReply(msg); onSetContextMenu(null); }} className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"><Reply className="w-3 h-3" /> Reply</button>
-              <button onClick={() => { onSetActiveReaction(msg.id); onSetContextMenu(null); }} className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"><Smile className="w-3 h-3" /> React</button>
-              <button onClick={() => { onPin(msg.id); onSetContextMenu(null); }} className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"><Pin className="w-3 h-3" /> {msg.isPinned ? "Unpin" : "Pin"}</button>
+              className="bg-card/95 backdrop-blur-xl rounded-xl py-1.5 min-w-[150px] menu-enter shadow-xl border border-border/30" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => { onReply(msg); onSetContextMenu(null); }} className="w-full text-left px-3 py-2.5 text-[13px] text-foreground active:bg-secondary/40 flex items-center gap-2.5 transition-colors"><Reply className="w-3.5 h-3.5 text-muted-foreground" /> Reply</button>
+              <button onClick={() => { onSetActiveReaction(msg.id); onSetContextMenu(null); }} className="w-full text-left px-3 py-2.5 text-[13px] text-foreground active:bg-secondary/40 flex items-center gap-2.5 transition-colors"><Smile className="w-3.5 h-3.5 text-muted-foreground" /> React</button>
+              <button onClick={() => { onPin(msg.id); onSetContextMenu(null); }} className="w-full text-left px-3 py-2.5 text-[13px] text-foreground active:bg-secondary/40 flex items-center gap-2.5 transition-colors"><Pin className="w-3.5 h-3.5 text-muted-foreground" /> {msg.isPinned ? "Unpin" : "Pin"}</button>
               {msg.isOwn && !msg.mediaUrl && msg.text !== "(media)" && (
-                <button onClick={() => { setEditText(msg.text); setIsEditing(true); onSetContextMenu(null); setTimeout(() => editInputRef.current?.focus(), 50); }} className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-secondary/50 flex items-center gap-2"><Pencil className="w-3 h-3" /> Edit</button>
+                <button onClick={() => { setEditText(msg.text); setIsEditing(true); onSetContextMenu(null); setTimeout(() => editInputRef.current?.focus(), 50); }} className="w-full text-left px-3 py-2.5 text-[13px] text-foreground active:bg-secondary/40 flex items-center gap-2.5 transition-colors"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /> Edit</button>
               )}
               {msg.isOwn && (
-                <button onClick={() => { onDelete(msg.id); onSetContextMenu(null); }} className="w-full text-left px-3 py-2 text-xs text-destructive hover:bg-destructive/10 flex items-center gap-2"><X className="w-3 h-3" /> Delete</button>
+                <>
+                  <div className="h-px bg-border/30 mx-2 my-0.5" />
+                  <button onClick={() => { onDelete(msg.id); onSetContextMenu(null); }} className="w-full text-left px-3 py-2.5 text-[13px] text-destructive active:bg-destructive/10 flex items-center gap-2.5 transition-colors"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                </>
               )}
             </div>
           </div>,
@@ -629,14 +633,14 @@ MessageBubble.displayName = "MessageBubble";
 
 // ─── System Event Bubble ─────────────────────────────────────────────────────
 const SystemEventBubble = memo(({ evt }: { evt: SystemEvent }) => (
-  <div className="flex justify-center my-2">
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-muted-foreground">
-      <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ backgroundColor: evt.color, color: "hsl(var(--background))" }}>
+  <div className="flex justify-center my-1.5">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/40 text-[11px] text-muted-foreground">
+      <div className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0" style={{ backgroundColor: evt.color, color: "hsl(var(--background))" }}>
         {evt.username[0]?.toUpperCase()}
       </div>
       <span>
-        <span className="font-medium text-foreground">{evt.username}</span>
-        {evt.type === "screenshot" ? " took a screenshot ⚠️" : evt.type === "message_deleted" ? " deleted a message 🗑️" : evt.type === "media_saved" ? " saved a media 💾" : ` has ${evt.type === "join" ? "joined" : "left"}`}
+        <span className="font-medium text-foreground/80">{evt.username}</span>
+        {evt.type === "screenshot" ? " took a screenshot ⚠️" : evt.type === "message_deleted" ? " deleted a message" : evt.type === "media_saved" ? " saved a media" : ` has ${evt.type === "join" ? "joined" : "left"}`}
       </span>
     </div>
   </div>
@@ -665,7 +669,7 @@ const ChatRoom = () => {
   const [isEndingChat, setIsEndingChat] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(80);
+  const [headerHeight, setHeaderHeight] = useState(56);
   const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -705,15 +709,15 @@ const ChatRoom = () => {
     return items;
   }, [messages, systemEvents]);
 
-  // Virtualizer for message list — use scrollMargin for padding
+  // Virtualizer
   const virtualizer = useVirtualizer({
     count: timeline.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 80,
+    estimateSize: () => 72,
     overscan: 10,
   });
 
-  // Smart auto-scroll: only scroll if user is near the bottom
+  // Smart auto-scroll
   const isNearBottomRef = useRef(true);
   const prevCountRef = useRef(0);
   const userScrolledUpRef = useRef(false);
@@ -722,11 +726,9 @@ const ChatRoom = () => {
   const hasInitialScrolled = useRef(false);
   const lastTotalSizeRef = useRef(0);
 
-  // Core scroll-to-bottom using native scrollTo (more reliable than virtualizer.scrollToIndex)
   const scrollToBottomInternal = useCallback((behavior: ScrollBehavior = "auto") => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    // Use rAF to wait for layout
     requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior });
     });
@@ -748,11 +750,9 @@ const ChatRoom = () => {
     }
   }, []);
 
-  // Initial scroll to bottom once messages load
   useEffect(() => {
     if (timeline.length > 0 && !hasInitialScrolled.current) {
       hasInitialScrolled.current = true;
-      // Triple-rAF to ensure virtualizer has fully measured all items
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
@@ -764,22 +764,17 @@ const ChatRoom = () => {
     }
   }, [timeline.length, scrollToBottomInternal]);
 
-  // When virtualizer total size changes (media decrypts, images load, etc.),
-  // keep scroll pinned to bottom IF user was already at bottom.
-  // This is the KEY fix: we watch getTotalSize() changes, not ResizeObserver.
   const totalSize = virtualizer.getTotalSize();
   useEffect(() => {
     const sizeDiff = totalSize - lastTotalSizeRef.current;
     if (lastTotalSizeRef.current > 0 && sizeDiff !== 0) {
       if (!userScrolledUpRef.current && isNearBottomRef.current) {
-        // Content height changed while user is at bottom → re-anchor
         scrollToBottomInternal("auto");
       }
     }
     lastTotalSizeRef.current = totalSize;
   }, [totalSize, scrollToBottomInternal]);
 
-  // Handle new messages arriving
   useEffect(() => {
     const addedCount = timeline.length - prevCountRef.current;
     if (addedCount > 0) {
@@ -797,7 +792,6 @@ const ChatRoom = () => {
     prevCountRef.current = timeline.length;
   }, [timeline.length, scrollToBottomInternal]);
 
-  // Dynamic viewport height
   useEffect(() => {
     const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     setVh();
@@ -820,7 +814,6 @@ const ChatRoom = () => {
     if (chatEnded && roomId) { localStorage.removeItem(`room_${roomId}`); navigate("/"); }
   }, [chatEnded, roomId, navigate]);
 
-  // Intersection Observer for read receipts
   useEffect(() => {
     if (!roomConfig) return;
     observerRef.current = new IntersectionObserver(
@@ -836,7 +829,6 @@ const ChatRoom = () => {
     document.querySelectorAll("[data-msg-id]").forEach((el) => observerRef.current?.observe(el));
   }, [timeline.length]);
 
-  // Screenshot prevention
   useEffect(() => {
     if (!roomConfig) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -868,7 +860,6 @@ const ChatRoom = () => {
     const currentFile = selectedFile;
     const currentReply = replyTo;
     setSelectedFile(null); setFilePreviewUrl(null); setReplyTo(null);
-    // Force scroll to bottom on own send
     justSentRef.current = true;
     try {
       let fileToSend: File | undefined = currentFile || undefined;
@@ -977,7 +968,6 @@ const ChatRoom = () => {
     updateNearBottom();
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setShowScrollBottom(distFromBottom > 150);
-    // Auto-clear new message count when user scrolls back to bottom
     if (distFromBottom < 200) {
       setNewMsgCount(0);
       userScrolledUpRef.current = false;
@@ -995,12 +985,12 @@ const ChatRoom = () => {
   if (!roomConfig) return null;
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden bg-background">
       {screenBlocked && (
-        <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center">
-          <div className="text-center space-y-2">
-            <Shield className="w-12 h-12 mx-auto text-destructive animate-pulse" />
-            <p className="text-destructive font-bold text-lg">Screenshot Blocked</p>
+        <div className="fixed inset-0 bg-background z-[9999] flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <Shield className="w-12 h-12 mx-auto text-destructive/80" />
+            <p className="text-destructive font-semibold text-lg">Screenshot Blocked</p>
             <p className="text-muted-foreground text-xs">Screen recording & screenshots are not allowed</p>
           </div>
         </div>
@@ -1009,7 +999,7 @@ const ChatRoom = () => {
       {refreshPull > 0 && (
         <div className="fixed left-0 right-0 z-[1001] flex justify-center pointer-events-none transition-transform"
           style={{ top: `${headerHeight}px`, transform: `translateY(${Math.min(refreshPull * 0.5, 50)}px)`, opacity: Math.min(refreshPull / 70, 1) }}>
-          <div className={`w-8 h-8 rounded-full bg-primary/20 backdrop-blur flex items-center justify-center ${isRefreshing ? 'animate-spin' : ''}`}>
+          <div className={`w-8 h-8 rounded-full bg-secondary/60 flex items-center justify-center ${isRefreshing ? 'animate-spin' : ''}`}>
             <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M1 4v6h6M23 20v-6h-6" />
               <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
@@ -1042,32 +1032,32 @@ const ChatRoom = () => {
         {connStatus === "blocked" && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
             className="fixed left-0 right-0 z-[999] overflow-hidden" style={{ top: `${headerHeight}px` }}>
-            <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-destructive/10 border-b border-destructive/20 backdrop-blur-sm">
-              <WifiOff className="w-3 h-3 text-destructive" />
-              <p className="text-[11px] text-destructive font-medium">No connection · Messages will sync when back online</p>
+            <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-destructive/8 border-b border-destructive/15">
+              <WifiOff className="w-3 h-3 text-destructive/70" />
+              <p className="text-[11px] text-destructive/80 font-medium">No connection · Messages will sync when back online</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {pinnedMessage && (
-        <div className="fixed left-0 right-0 z-[998] glass border-b border-border/50 px-4 py-2 flex items-center gap-2 cursor-pointer"
-          style={{ top: connStatus === "blocked" ? `${headerHeight + 28}px` : `${headerHeight}px`, backdropFilter: 'blur(20px)' }}
+        <div className="fixed left-0 right-0 z-[998] glass-subtle border-b border-border/30 px-4 py-2 flex items-center gap-2.5 cursor-pointer active:bg-secondary/30 transition-colors"
+          style={{ top: connStatus === "blocked" ? `${headerHeight + 28}px` : `${headerHeight}px` }}
           onClick={() => scrollToMessage(pinnedMessage.id)}>
-          <Pin className="w-3 h-3 text-primary rotate-45" />
-          <p className="text-xs text-muted-foreground truncate flex-1">
-            <span className="font-medium text-foreground">{pinnedMessage.username}: </span>{pinnedMessage.text}
+          <Pin className="w-3 h-3 text-primary/60 rotate-45 flex-shrink-0" />
+          <p className="text-[12px] text-muted-foreground truncate flex-1">
+            <span className="font-medium text-foreground/70">{pinnedMessage.username}: </span>{pinnedMessage.text}
           </p>
         </div>
       )}
 
-      {/* Virtualized Messages Area */}
+      {/* Messages */}
       <div
         ref={scrollContainerRef}
         className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden chat-scroll-container"
         style={{
           top: `${headerHeight + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`,
-          bottom: '70px',
+          bottom: '60px',
           overflowAnchor: 'none',
         }}
         onClick={clearOverlays}
@@ -1076,8 +1066,8 @@ const ChatRoom = () => {
         {timeline.length === 0 && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-3">
-              <Shield className="w-10 h-10 mx-auto text-primary/30" />
-              <p className="text-muted-foreground/40 text-sm">Messages are end-to-end encrypted.<br />No one outside this room can read them.</p>
+              <Shield className="w-10 h-10 mx-auto text-muted-foreground/15" />
+              <p className="text-muted-foreground/30 text-sm leading-relaxed">Messages are end-to-end encrypted.<br />No one outside this room can read them.</p>
             </div>
           </div>
         )}
@@ -1097,7 +1087,7 @@ const ChatRoom = () => {
                   width: '100%',
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
-                className="px-4 py-1.5 msg-bubble-wrap"
+                className="px-3 py-1 msg-bubble-wrap"
               >
                 {item.type === "system" ? (
                   <SystemEventBubble evt={item.data} />
@@ -1128,10 +1118,10 @@ const ChatRoom = () => {
 
         {/* Typing indicator */}
         {typingUsers.length > 0 && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground px-4 py-2">
-            <div className="flex gap-1">
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground/60 px-4 py-2">
+            <div className="flex gap-0.5">
               {[0, 1, 2].map((i) => (
-                <span key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                <span key={i} className="w-1 h-1 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
               ))}
             </div>
             {typingUsers.join(", ")} typing...
@@ -1139,17 +1129,17 @@ const ChatRoom = () => {
         )}
       </div>
 
-      {/* Scroll to bottom FAB with new message count */}
+      {/* Scroll to bottom */}
       <AnimatePresence>
         {(showScrollBottom || newMsgCount > 0) && (
-          <motion.button initial={{ opacity: 0, scale: 0.8, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8, y: 10 }} transition={{ duration: 0.2 }}
-            onClick={scrollToBottom} className="fixed right-4 z-[999] flex items-center gap-2 rounded-full glass border border-border/50 px-3 h-10 text-primary shadow-lg active:scale-95 transition-transform" style={{ bottom: '80px' }}>
+          <motion.button initial={{ opacity: 0, scale: 0.8, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8, y: 8 }} transition={{ duration: 0.15 }}
+            onClick={scrollToBottom} className="fixed right-3 z-[999] flex items-center gap-1.5 rounded-full bg-card/90 backdrop-blur-md border border-border/30 px-3 h-9 text-primary shadow-lg active:scale-95 transition-transform" style={{ bottom: '68px' }}>
             {newMsgCount > 0 && (
-              <span className="text-xs font-medium bg-primary text-primary-foreground rounded-full px-2 py-0.5">
-                {newMsgCount} new
+              <span className="text-[11px] font-medium bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
+                {newMsgCount}
               </span>
             )}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
           </motion.button>
         )}
       </AnimatePresence>
@@ -1179,9 +1169,9 @@ const ChatRoom = () => {
 
       {/* Image Lightbox */}
       {lightboxData && createPortal(
-        <div className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center animate-fade-in" onClick={() => setLightboxData(null)}>
+        <div className="fixed inset-0 z-[10000] bg-background/98 flex items-center justify-center animate-fade-in" onClick={() => setLightboxData(null)}>
           <div className="absolute top-4 left-4 z-10">
-            <button onClick={() => setLightboxData(null)} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur text-white text-sm font-medium active:scale-90 transition-transform">
+            <button onClick={() => setLightboxData(null)} className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary/60 backdrop-blur-sm text-foreground text-sm font-medium active:scale-95 transition-transform">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
               Back
             </button>
@@ -1197,7 +1187,7 @@ const ChatRoom = () => {
                   broadcastMediaSaved();
                 }
               }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-medium active:scale-90 transition-transform"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-secondary/60 backdrop-blur-sm text-foreground text-sm font-medium active:scale-95 transition-transform"
             >
               <Download className="w-4 h-4" /> Save
             </button>
@@ -1208,24 +1198,24 @@ const ChatRoom = () => {
                   deleteMessage(lightboxData.messageId); setLightboxData(null);
                 }
               }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-destructive/80 backdrop-blur text-white text-sm font-medium active:scale-90 transition-transform"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-destructive/70 text-destructive-foreground text-sm font-medium active:scale-95 transition-transform"
             >
               <Trash2 className="w-4 h-4" /> Delete
             </button>
-            <button onClick={() => setLightboxData(null)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform">
+            <button onClick={() => setLightboxData(null)} className="w-9 h-9 rounded-full bg-secondary/60 flex items-center justify-center text-foreground active:scale-95 transition-transform">
               <X className="w-5 h-5" />
             </button>
           </div>
           {lightboxData.mediaType?.startsWith("video/") ? (
-            <video src={lightboxData.url} controls controlsList="nodownload" disablePictureInPicture autoPlay className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()} />
+            <video src={lightboxData.url} controls controlsList="nodownload" disablePictureInPicture autoPlay className="max-w-[95vw] max-h-[90vh] object-contain rounded-xl" onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()} />
           ) : lightboxData.mediaType?.startsWith("audio/") ? (
-            <div className="glass rounded-2xl p-6 w-[90vw] max-w-sm" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-center mb-4"><div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center"><Mic className="w-8 h-8 text-primary" /></div></div>
-              <p className="text-center text-sm text-white/70 mb-4">Voice Note</p>
+            <div className="bg-card rounded-2xl p-6 w-[90vw] max-w-sm border border-border/30" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-center mb-4"><div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center"><Mic className="w-7 h-7 text-primary/70" /></div></div>
+              <p className="text-center text-sm text-muted-foreground mb-4">Voice Note</p>
               <audio src={lightboxData.url} controls controlsList="nodownload" className="w-full" autoPlay />
             </div>
           ) : (
-            <img src={lightboxData.url} alt="Full size" className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+            <img src={lightboxData.url} alt="Full size" className="max-w-[95vw] max-h-[90vh] object-contain rounded-xl" onClick={(e) => e.stopPropagation()} />
           )}
         </div>,
         document.body
@@ -1233,9 +1223,9 @@ const ChatRoom = () => {
 
       <AnimatePresence>
         {isEndingChat && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
-            <Loader2 className="w-10 h-10 text-destructive animate-spin" />
-            <p className="text-foreground font-medium text-lg">Deleting chat…</p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-8 h-8 text-destructive/70 animate-spin" />
+            <p className="text-foreground font-medium">Deleting chat…</p>
             <p className="text-muted-foreground text-sm">Removing all messages and data</p>
           </motion.div>
         )}
