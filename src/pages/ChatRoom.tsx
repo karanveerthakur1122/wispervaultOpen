@@ -5,8 +5,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock, Moon
 } from "lucide-react";
+import { getRoomPrefs, isInDndWindow } from "@/lib/notification-prefs";
 import { useConnectivity, type ConnectivityStatus } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
 import EmojiPicker from "@/components/EmojiPicker";
