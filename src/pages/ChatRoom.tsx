@@ -1058,7 +1058,7 @@ const ChatRoom = () => {
           </div>
         )}
 
-        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+        <div ref={virtualContentRef} style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative', overflowAnchor: 'none' }}>
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const item = timeline[virtualItem.index];
             return (
