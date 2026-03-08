@@ -335,7 +335,7 @@ const RoomInfoPanel = ({
                       key={opt.key}
                       onClick={() => {
                         setSoundMode(opt.key);
-                        updatePref("soundMode", opt.key);
+                        setRoomPref(roomId, "soundMode", opt.key);
                       }}
                       className={`p-1.5 rounded-md transition-colors ${
                         soundMode === opt.key
