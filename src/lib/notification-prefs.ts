@@ -4,6 +4,7 @@ export type SoundMode = "volume" | "vibrate" | "mute";
 
 export interface RoomPrefs {
   notifications: boolean;
+  toastNotifications: boolean;
   soundMode: SoundMode;
   dndEnabled: boolean;
   dndStart: string; // "HH:MM" 24h
@@ -12,6 +13,7 @@ export interface RoomPrefs {
 
 const DEFAULTS: RoomPrefs = {
   notifications: true,
+  toastNotifications: true,
   soundMode: "volume",
   dndEnabled: false,
   dndStart: "22:00",
@@ -57,6 +59,7 @@ export function isInDndWindow(start: string, end: string): boolean {
 
 export interface AlertDecision {
   showNotification: boolean;
+  showToast: boolean;
   playSound: boolean;
   vibrate: boolean;
 }
@@ -67,11 +70,12 @@ export function getAlertDecision(roomId: string): AlertDecision {
 
   // DND overrides everything
   if (prefs.dndEnabled && isInDndWindow(prefs.dndStart, prefs.dndEnd)) {
-    return { showNotification: false, playSound: false, vibrate: false };
+    return { showNotification: false, showToast: false, playSound: false, vibrate: false };
   }
 
   return {
     showNotification: prefs.notifications,
+    showToast: prefs.toastNotifications,
     playSound: prefs.soundMode === "volume",
     vibrate: prefs.soundMode === "vibrate",
   };

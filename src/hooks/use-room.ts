@@ -219,14 +219,15 @@ export function useRoom(config: RoomConfig | null) {
 
     if (decision.showNotification) {
       if (pageHidden && !notifBlocked) {
-        // Group rapid system notifications
         pendingNotifCountRef.current += 1;
         if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
         notifTimerRef.current = setTimeout(flushGroupedNotification, 400);
-      } else if (notifBlocked || !pageHidden) {
-        // Fallback: in-app toast when notifications are blocked OR page is visible
+      } else if (decision.showToast && (notifBlocked || !pageHidden)) {
         toast(title, { description: body, duration: 3000 });
       }
+    } else if (decision.showToast) {
+      // Notifications off but toasts on
+      toast(title, { description: body, duration: 3000 });
     }
 
     if (pageHidden) {
