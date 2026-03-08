@@ -238,7 +238,6 @@ export function useRoom(config: RoomConfig | null) {
         haptic.medium();
       }
     }
-    }
   }, [config, showNotification, playNotificationSound, flushGroupedNotification]);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
