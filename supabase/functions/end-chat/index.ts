@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { room_id } = await req.json();
+    const { room_id, session_token } = await req.json();
 
     if (!room_id || typeof room_id !== "string") {
       return new Response(
@@ -21,10 +21,39 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (!session_token || typeof session_token !== "string") {
+      return new Response(
+        JSON.stringify({ error: "session_token is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // Validate session token belongs to the room creator
+    const { data: session, error: sessionError } = await supabase
+      .from("room_sessions")
+      .select("username, is_creator")
+      .eq("room_id", room_id)
+      .eq("session_token", session_token)
+      .maybeSingle();
+
+    if (sessionError || !session) {
+      return new Response(
+        JSON.stringify({ error: "Invalid session token" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!session.is_creator) {
+      return new Response(
+        JSON.stringify({ error: "Only the room creator can end the chat" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Delete in correct FK order: children first, then parents
 

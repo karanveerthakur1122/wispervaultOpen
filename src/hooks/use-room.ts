@@ -246,7 +246,7 @@ export function useRoom(config: RoomConfig | null) {
       const { data: sessionData } = await supabase
         .from("room_sessions")
         .upsert(
-          { room_id: config.roomId, username: config.username },
+          { room_id: config.roomId, username: config.username, is_creator: config.isCreator ?? false },
           { onConflict: "room_id,username" }
         )
         .select("session_token")
@@ -627,7 +627,7 @@ export function useRoom(config: RoomConfig | null) {
   const endChat = useCallback(async () => {
     if (!config || !channelRef.current) return;
     channelRef.current.send({ type: "broadcast", event: "chat:end", payload: {} });
-    await supabase.functions.invoke("end-chat", { body: { room_id: config.roomId } });
+    await supabase.functions.invoke("end-chat", { body: { room_id: config.roomId, session_token: sessionTokenRef.current } });
     localStorage.removeItem(`room_${config.roomId}`);
     setChatEnded(true);
   }, [config]);
