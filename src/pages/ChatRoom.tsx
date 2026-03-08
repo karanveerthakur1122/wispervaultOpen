@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { toast } from "sonner";
 import RoomInfoPanel from "@/components/RoomInfoPanel";
+import NotificationPermissionBanner from "@/components/NotificationPermissionBanner";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
