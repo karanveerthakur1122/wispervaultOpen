@@ -480,7 +480,26 @@ export function useRoom(config: RoomConfig | null) {
     };
   }, [config?.roomId, config?.username, config?.avatarColor, config?.password]);
 
-  // Offline queue flush
+  // Client-side expiry: remove messages older than 2 hours every 30 seconds
+  useEffect(() => {
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.pending || (now - m.timestamp < TWO_HOURS));
+        if (filtered.length !== prev.length) {
+          // Also unpin if pinned message expired
+          setPinnedMessage((p) => {
+            if (p && !p.pending && now - p.timestamp >= TWO_HOURS) return null;
+            return p;
+          });
+        }
+        return filtered.length === prev.length ? prev : filtered;
+      });
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!config) return;
     const flushQueue = async () => {
