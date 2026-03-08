@@ -116,6 +116,15 @@ const ChatHeader = memo(({
             </button>
             {isRoomLocked && <Lock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
             {isDndActive && <Moon className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
+            {/* Sound mode indicator */}
+            {curSoundMode === "volume" ? (
+              <Volume2 className="w-3 h-3 text-primary flex-shrink-0" />
+            ) : curSoundMode === "vibrate" ? (
+              <Vibrate className="w-3 h-3 text-primary flex-shrink-0" />
+            ) : (
+              <VolumeX className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            )}
+            {/* Notification permission indicator */}
             {notifPerm === "granted" ? (
               <Bell className="w-3 h-3 text-primary flex-shrink-0" />
             ) : (
