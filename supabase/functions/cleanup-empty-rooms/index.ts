@@ -75,22 +75,23 @@ Deno.serve(async (req) => {
       }
 
       // Delete in correct FK order
-      await supabase.from("reactions").delete().eq("room_id", roomId);
-      await supabase.from("read_receipts").delete().eq("room_id", roomId);
-      await supabase.from("media_views").delete().eq("room_id", roomId);
+        await supabase.from("reactions").delete().eq("room_id", roomId);
+        await supabase.from("read_receipts").delete().eq("room_id", roomId);
+        await supabase.from("media_views").delete().eq("room_id", roomId);
+        await supabase.from("room_sessions").delete().eq("room_id", roomId);
 
-      // Delete encrypted media from storage
-      const { data: mediaFiles } = await supabase.storage
-        .from("encrypted-media")
-        .list(roomId);
-      if (mediaFiles && mediaFiles.length > 0) {
-        const paths = mediaFiles.map((f: { name: string }) => `${roomId}/${f.name}`);
-        await supabase.storage.from("encrypted-media").remove(paths);
-      }
+        // Delete encrypted media from storage
+        const { data: mediaFiles } = await supabase.storage
+          .from("encrypted-media")
+          .list(roomId);
+        if (mediaFiles && mediaFiles.length > 0) {
+          const paths = mediaFiles.map((f: { name: string }) => `${roomId}/${f.name}`);
+          await supabase.storage.from("encrypted-media").remove(paths);
+        }
 
-      await supabase.from("messages").delete().eq("room_id", roomId);
-      await supabase.from("presence").delete().eq("room_id", roomId);
-      await supabase.from("rooms").delete().eq("room_id", roomId);
+        await supabase.from("messages").delete().eq("room_id", roomId);
+        await supabase.from("presence").delete().eq("room_id", roomId);
+        await supabase.from("rooms").delete().eq("room_id", roomId);
 
       console.log(`Auto-deleted inactive room: ${roomId}`);
       deleted++;
