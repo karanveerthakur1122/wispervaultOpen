@@ -961,11 +961,11 @@ const ChatRoom = () => {
   }, [updateNearBottom]);
 
   const scrollToBottom = useCallback(() => {
-    virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
+    scrollToBottomInternal("smooth");
     setNewMsgCount(0);
     userScrolledUpRef.current = false;
     isNearBottomRef.current = true;
-  }, [virtualizer, timeline.length]);
+  }, [scrollToBottomInternal]);
 
   const username = roomConfig?.username ?? "";
   if (!roomConfig) return null;
