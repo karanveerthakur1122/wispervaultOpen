@@ -690,11 +690,11 @@ const ChatRoom = () => {
 
   const {
     messages, onlineUsers, isConnected, chatEnded, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
-    sendMessage, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage, getChannel,
+    sendMessage, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage, channel,
   } = useRoom(roomConfig);
 
   const { typingUsers, typingText, onInputChange: onTypingInput, onMessageSent: onTypingSent } = useTypingIndicator({
-    channel: getChannel(),
+    channel,
     username: roomConfig?.username ?? "",
     onlineUsernames: onlineUsers.map((u) => u.username),
   });
