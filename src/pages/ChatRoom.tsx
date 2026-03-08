@@ -481,7 +481,7 @@ const MessageBubble = memo(({
 
           {msg.replyTo && (
             <div
-              className={`mb-1.5 rounded-lg cursor-pointer overflow-hidden backdrop-blur-sm transition-colors active:opacity-80 ${
+              className={`mb-1.5 rounded-lg cursor-pointer overflow-hidden backdrop-blur-sm transition-all duration-150 active:scale-[0.97] active:opacity-90 ${
                 msg.isOwn
                   ? "bg-primary-foreground/[0.08] border border-primary-foreground/[0.08]"
                   : "bg-muted/50 border border-border/30"
