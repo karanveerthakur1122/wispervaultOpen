@@ -907,11 +907,8 @@ const ChatRoom = () => {
 
   const handleInputChange = useCallback((value: string) => {
     setMessageInput(value);
-    if (value.trim()) {
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => sendTyping(), 300);
-    }
-  }, [sendTyping]);
+    onTypingInput(value.trim().length > 0);
+  }, [onTypingInput]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
