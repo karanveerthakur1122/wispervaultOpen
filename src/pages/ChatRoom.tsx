@@ -343,7 +343,7 @@ interface MessageBubbleProps {
 const MessageBubble = memo(({
   msg, username, activeReactionMsg, showContextMenu,
   onReaction, onSetActiveReaction, onSetContextMenu,
-  onPin, onDelete, onEdit, onMediaView, onlineUserCount, onReply, onScrollToMessage, onLightbox,
+  onPin, onDelete, onEdit, onMediaView, onlineUserCount, onReply, onScrollToMessage, onLightbox, onRetry,
 }: MessageBubbleProps) => {
   const [mediaObjectUrl, setMediaObjectUrl] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
