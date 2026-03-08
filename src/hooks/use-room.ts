@@ -414,13 +414,7 @@ export function useRoom(config: RoomConfig | null) {
           setOnlineUsers(presenceStateToUsers(channel.presenceState<{ username: string; color: string }>()));
         })
         .on("broadcast", { event: "chat:end" }, () => setChatEnded(true))
-        .on("broadcast", { event: "typing" }, (payload) => {
-          const user = payload.payload?.username as string;
-          if (user && user !== config.username) {
-            setTypingUsers((prev) => (prev.includes(user) ? prev : [...prev, user]));
-            setTimeout(() => setTypingUsers((prev) => prev.filter((u) => u !== user)), 3000);
-          }
-        })
+        // Legacy typing event — ignored; typing:start/typing:stop handled by useTypingIndicator
         .on("broadcast", { event: "user:join" }, (payload) => {
           const { username: joinedUser, color } = payload.payload as { username: string; color: string };
           if (joinedUser && joinedUser !== config.username) {
