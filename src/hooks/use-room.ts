@@ -503,33 +503,39 @@ export function useRoom(config: RoomConfig | null) {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (!config) return;
-    const flushQueue = async () => {
-      if (!navigator.onLine || offlineQueueRef.current.length === 0) return;
-      const queue = [...offlineQueueRef.current];
-      offlineQueueRef.current = [];
-      for (const item of queue) {
-        try {
-          const replyPrefix = item.replyTo ? `[reply:${item.replyTo.messageId}:${item.replyTo.username}:${item.replyTo.preview}]` : "";
-          const fullText = replyPrefix + (item.text || "(media)");
-          const { encrypted, iv } = await workerEncrypt(fullText, config.password, config.roomId);
-          await supabase.from("messages").insert({
-            room_id: config.roomId, encrypted_blob: encrypted, iv,
-            sender_name: config.username, sender_color: config.avatarColor,
-            media_url: null, media_type: null,
-          });
-        } catch {
-          // Re-queue on failure
-          offlineQueueRef.current.push(item);
-        }
-      }
-    };
-    window.addEventListener("online", flushQueue);
-    return () => window.removeEventListener("online", flushQueue);
-  }, [config]);
+  // ─── Message Queue Integration ────────────────────────────────────────
+  const handleSendToServer = useCallback(async (item: import("@/hooks/use-message-queue").QueueItem): Promise<boolean> => {
+    try {
+      const { error: insertError } = await supabase.from("messages").insert({
+        room_id: item.room_id,
+        encrypted_blob: item.encrypted_blob,
+        iv: item.iv,
+        sender_name: item.sender_name,
+        sender_color: item.sender_color,
+        media_url: item.media_url,
+        media_type: item.media_type,
+      });
+      if (insertError) return false;
+      await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", item.room_id);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
-  // Send message with optimistic rendering
+  const handleQueueStatusChange = useCallback((tempId: string, status: QueueItemStatus) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === tempId ? { ...m, sendStatus: status, pending: status !== "sent" } : m))
+    );
+  }, []);
+
+  const { enqueue: enqueueToQueue, retryMessage } = useMessageQueue(
+    config?.roomId,
+    handleSendToServer,
+    handleQueueStatusChange,
+  );
+
+  // Send message with optimistic rendering + queue
   const sendMessage = useCallback(async (
     text: string, file?: File, replyTo?: ReplyInfo,
     onProgress?: (stage: string, percent: number) => void,
@@ -549,15 +555,9 @@ export function useRoom(config: RoomConfig | null) {
       id: tempId, text: displayText, username: config.username, color: config.avatarColor,
       timestamp: Date.now(), isOwn: true, isPinned: false,
       mediaUrl: null, mediaType: file?.type || null,
-      reactions: [], readBy: [], replyTo: replyTo || null, pending: true,
+      reactions: [], readBy: [], replyTo: replyTo || null, pending: true, sendStatus: "pending",
     };
     setMessages((prev) => [...prev, optimisticMsg]);
-
-    // Queue for offline if no network and no file
-    if (!navigator.onLine && !file) {
-      offlineQueueRef.current.push({ text: displayText, replyTo, tempId });
-      return;
-    }
 
     try {
       const { encrypted, iv } = await workerEncrypt(fullText, config.password, config.roomId);
@@ -584,27 +584,40 @@ export function useRoom(config: RoomConfig | null) {
         }
         mediaUrl = JSON.stringify({ path: filePath, iv: fileIv });
         mediaType = file.type;
+
+        // For media messages, send directly (not queued since upload already done)
+        onProgress?.("sending", 90);
+        const { error: insertError } = await supabase.from("messages").insert({
+          room_id: config.roomId, encrypted_blob: encrypted, iv,
+          sender_name: config.username, sender_color: config.avatarColor,
+          media_url: mediaUrl, media_type: mediaType,
+        });
+        if (insertError) throw new Error(`Message send failed: ${insertError.message}`);
+        await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
+        setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, sendStatus: "sent", pending: false } : m));
+        onProgress?.("done", 100);
+        return;
       }
 
+      // Text-only messages go through the queue for reliability
       onProgress?.("sending", 90);
-      const { error: insertError } = await supabase.from("messages").insert({
-        room_id: config.roomId, encrypted_blob: encrypted, iv,
-        sender_name: config.username, sender_color: config.avatarColor,
-        media_url: mediaUrl, media_type: mediaType,
+      enqueueToQueue({
+        tempId,
+        encrypted_blob: encrypted,
+        iv,
+        room_id: config.roomId,
+        sender_name: config.username,
+        sender_color: config.avatarColor,
+        media_url: null,
+        media_type: null,
       });
-      if (insertError) {
-        console.error("Message insert failed:", insertError);
-        throw new Error(`Message send failed: ${insertError.message}`);
-      }
-
-      await supabase.from("rooms").update({ last_message_at: new Date().toISOString() }).eq("room_id", config.roomId);
       onProgress?.("done", 100);
     } catch (err) {
-      // Remove optimistic message on failure
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      // Mark as failed instead of removing
+      setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, sendStatus: "failed", pending: true } : m));
       throw err;
     }
-  }, [config]);
+  }, [config, enqueueToQueue]);
 
   const sendTyping = useCallback(() => {
     if (!channelRef.current || !config) return;
