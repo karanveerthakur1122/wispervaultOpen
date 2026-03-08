@@ -155,42 +155,9 @@ const RoomInfoPanel = ({
   const [mediaTab, setMediaTab] = useState<MediaTab>("photos");
   const [kickTarget, setKickTarget] = useState<string | null>(null);
 
-  // Notification & sound preferences (persisted per room via utility)
+  // Sound preferences (persisted per room via utility)
   const initPrefs = getRoomPrefs(roomId);
-  const [notificationsOn, setNotificationsOn] = useState(initPrefs.notifications);
-  
   const [soundMode, setSoundMode] = useState<SoundMode>(initPrefs.soundMode);
-  const [dndEnabled, setDndEnabled] = useState(initPrefs.dndEnabled);
-  const [dndStart, setDndStart] = useState(initPrefs.dndStart);
-  const [dndEnd, setDndEnd] = useState(initPrefs.dndEnd);
-
-  const handleToggleNotifications = useCallback(async () => {
-    const wantOn = !notificationsOn;
-    if (wantOn && "Notification" in window) {
-      const perm = Notification.permission;
-      if (perm === "denied") {
-        toast({
-          title: "Notifications blocked",
-          description: "Please enable notifications in your browser settings.",
-          variant: "destructive",
-        });
-        return; // don't toggle on if denied
-      }
-      if (perm === "default") {
-        const result = await Notification.requestPermission();
-        if (result !== "granted") {
-          toast({
-            title: "Permission not granted",
-            description: "Notifications won't work without permission.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-    }
-    setNotificationsOn(wantOn);
-    setRoomPref(roomId, "notifications", wantOn);
-  }, [roomId, notificationsOn]);
 
   const mediaMessages = useMemo(() => {
     return messages.filter((m) => m.mediaUrl && m.mediaType);
