@@ -854,6 +854,7 @@ const ChatRoom = () => {
     const file = voiceRecorder.sendPreview();
     if (!file) return;
     setIsSending(true);
+    justSentRef.current = true;
     setSendProgress({ stage: "encrypting", percent: 10 });
     try {
       await sendMessage("🎤 Voice message", file, replyTo || undefined, (stage, percent) => setSendProgress({ stage, percent }));
