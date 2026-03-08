@@ -1123,10 +1123,15 @@ const ChatRoom = () => {
 
 
 
+      {/* Notification permission banner */}
+      <div className="fixed left-0 right-0 z-[999]" style={{ top: `${headerHeight}px` }}>
+        <NotificationPermissionBanner />
+      </div>
+
       <AnimatePresence>
         {connStatus === "blocked" && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-            className="fixed left-0 right-0 z-[999] overflow-hidden" style={{ top: `${headerHeight}px` }}>
+            className="fixed left-0 right-0 z-[998] overflow-hidden" style={{ top: `${headerHeight}px` }}>
             <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-destructive/8 border-b border-destructive/15">
               <WifiOff className="w-3 h-3 text-destructive/70" />
               <p className="text-[11px] text-destructive/80 font-medium">No connection · Messages will sync when back online</p>
