@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { encryptFile } from "@/lib/crypto";
 import { getAlertDecision } from "@/lib/notification-prefs";
@@ -208,18 +209,24 @@ export function useRoom(config: RoomConfig | null) {
   }, [showNotification]);
 
   /** Preference-aware alert: checks notifications, sound mode, DND, and page visibility. */
-  const alertForMessage = useCallback((title: string, options?: NotificationOptions) => {
+  const alertForMessage = useCallback((title: string, body?: string) => {
     if (!config) return;
     const decision = getAlertDecision(config.roomId);
 
     // Only show system notification when page is NOT visible (WhatsApp-style)
     const pageHidden = typeof document !== "undefined" && document.visibilityState !== "visible";
+    const notifBlocked = !("Notification" in window) || Notification.permission === "denied";
 
-    if (decision.showNotification && pageHidden) {
-      // Group rapid notifications
-      pendingNotifCountRef.current += 1;
-      if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
-      notifTimerRef.current = setTimeout(flushGroupedNotification, 400);
+    if (decision.showNotification) {
+      if (pageHidden && !notifBlocked) {
+        // Group rapid system notifications
+        pendingNotifCountRef.current += 1;
+        if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
+        notifTimerRef.current = setTimeout(flushGroupedNotification, 400);
+      } else if (notifBlocked || !pageHidden) {
+        // Fallback: in-app toast when notifications are blocked OR page is visible
+        toast(title, { description: body, duration: 3000 });
+      }
     }
 
     if (pageHidden) {
@@ -396,10 +403,7 @@ export function useRoom(config: RoomConfig | null) {
               enqueueMessage(newMsg);
               if (msg.is_pinned) setPinnedMessage(newMsg);
               if (!newMsg.isOwn) {
-                alertForMessage(newMsg.username, {
-                  body: newMsg.mediaType ? "Sent a media file" : newMsg.text.slice(0, 100),
-                  tag: `msg-${newMsg.id}`,
-                });
+                alertForMessage(newMsg.username, newMsg.mediaType ? "Sent a media file" : newMsg.text.slice(0, 100));
               }
             } catch {}
           }
@@ -417,7 +421,7 @@ export function useRoom(config: RoomConfig | null) {
               const { text, replyTo } = parseReply(rawText);
               setMessages((prev) => prev.map((m) => m.id !== msg.id ? m : { ...m, text, isPinned: msg.is_pinned, replyTo }));
               if (msg.sender_name !== config.username) {
-                alertForMessage(`${msg.sender_name} edited a message`, { body: text.slice(0, 100), tag: `edit-${msg.id}` });
+                alertForMessage(`${msg.sender_name} edited a message`, text.slice(0, 100));
               }
               if (msg.is_pinned) {
                 const existing = messagesRef.current.find((m) => m.id === msg.id);
@@ -448,7 +452,7 @@ export function useRoom(config: RoomConfig | null) {
               return { ...m, reactions: [...m.reactions, { id: r.id, emoji: r.emoji, senderName: r.sender_name }] };
             }));
             if (r.sender_name !== config.username) {
-              alertForMessage(`${r.sender_name} reacted ${r.emoji}`, { tag: `reaction-${r.id}` });
+              alertForMessage(`${r.sender_name} reacted ${r.emoji}`);
             }
           }
         )
