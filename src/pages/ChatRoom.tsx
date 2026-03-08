@@ -938,12 +938,20 @@ const ChatRoom = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
     updateNearBottom();
-    setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 150);
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollBottom(distFromBottom > 150);
+    // Auto-clear new message count when user scrolls back to bottom
+    if (distFromBottom < 200) {
+      setNewMsgCount(0);
+      userScrolledUpRef.current = false;
+    }
   }, [updateNearBottom]);
 
   const scrollToBottom = useCallback(() => {
     virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
     setNewMsgCount(0);
+    userScrolledUpRef.current = false;
+    isNearBottomRef.current = true;
   }, [virtualizer, timeline.length]);
 
   const username = roomConfig?.username ?? "";
