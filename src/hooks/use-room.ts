@@ -246,7 +246,7 @@ export function useRoom(config: RoomConfig | null) {
       const { data: sessionData } = await supabase
         .from("room_sessions")
         .upsert(
-          { room_id: config.roomId, username: config.username },
+          { room_id: config.roomId, username: config.username, is_creator: config.isCreator ?? false },
           { onConflict: "room_id,username" }
         )
         .select("session_token")
