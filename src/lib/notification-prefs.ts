@@ -74,8 +74,8 @@ export function getAlertDecision(roomId: string): AlertDecision {
   }
 
   return {
-    showNotification: prefs.notifications,
-    showToast: prefs.toastNotifications,
+    showNotification: true,
+    showToast: true,
     playSound: prefs.soundMode === "volume",
     vibrate: prefs.soundMode === "vibrate",
   };

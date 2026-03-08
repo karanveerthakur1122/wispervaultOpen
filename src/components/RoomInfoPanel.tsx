@@ -275,26 +275,6 @@ const RoomInfoPanel = ({
             <section className="space-y-2">
               <p className="text-xs text-muted-foreground/60 px-1 font-medium uppercase tracking-wider">Notifications</p>
 
-              {/* Notifications toggle */}
-              <div className="glass rounded-xl px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {notificationsOn ? (
-                    <Bell className="w-4 h-4 text-primary" />
-                  ) : (
-                    <BellOff className="w-4 h-4 text-muted-foreground" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Notifications</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {notificationsOn ? "You'll be notified of new messages" : "Notifications are off"}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={notificationsOn}
-                  onCheckedChange={handleToggleNotifications}
-                />
-              </div>
 
 
               {/* Sound mode selector */}
