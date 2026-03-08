@@ -657,7 +657,6 @@ const ChatRoom = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const virtualContentRef = useRef<HTMLDivElement>(null);
   const voiceRecorder = useVoiceRecorder();
   const { status: connStatus, latency: connLatency } = useConnectivity();
 
