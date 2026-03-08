@@ -89,7 +89,7 @@ export function useRoom(config: RoomConfig | null) {
   const [onlineUsers, setOnlineUsers] = useState<Array<{ username: string; color: string }>>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [chatEnded, setChatEnded] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  
   const [pinnedMessage, setPinnedMessage] = useState<DecryptedMessage | null>(null);
   const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
   const [roomCreatedAt, setRoomCreatedAt] = useState<string | null>(null);
@@ -414,13 +414,7 @@ export function useRoom(config: RoomConfig | null) {
           setOnlineUsers(presenceStateToUsers(channel.presenceState<{ username: string; color: string }>()));
         })
         .on("broadcast", { event: "chat:end" }, () => setChatEnded(true))
-        .on("broadcast", { event: "typing" }, (payload) => {
-          const user = payload.payload?.username as string;
-          if (user && user !== config.username) {
-            setTypingUsers((prev) => (prev.includes(user) ? prev : [...prev, user]));
-            setTimeout(() => setTypingUsers((prev) => prev.filter((u) => u !== user)), 3000);
-          }
-        })
+        // Legacy typing event — ignored; typing:start/typing:stop handled by useTypingIndicator
         .on("broadcast", { event: "user:join" }, (payload) => {
           const { username: joinedUser, color } = payload.payload as { username: string; color: string };
           if (joinedUser && joinedUser !== config.username) {
@@ -619,10 +613,9 @@ export function useRoom(config: RoomConfig | null) {
     }
   }, [config, enqueueToQueue]);
 
-  const sendTyping = useCallback(() => {
-    if (!channelRef.current || !config) return;
-    channelRef.current.send({ type: "broadcast", event: "typing", payload: { username: config.username } });
-  }, [config]);
+  // Expose channel for typing indicator hook
+  const [exposedChannel, setExposedChannel] = useState<RealtimeChannel | null>(null);
+  useEffect(() => { setExposedChannel(channelRef.current); }, [isConnected]);
 
   const endChat = useCallback(async () => {
     if (!config || !channelRef.current) return;
@@ -840,8 +833,8 @@ export function useRoom(config: RoomConfig | null) {
   }, [config, isRoomLocked]);
 
   return {
-    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead,
-    recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage,
+    messages, onlineUsers, isConnected, chatEnded, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
+    sendMessage, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead,
+    recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage, channel: exposedChannel,
   };
 }

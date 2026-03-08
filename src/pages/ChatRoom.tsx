@@ -17,6 +17,7 @@ import { RecordingWaveform, PlaybackWaveform } from "@/components/VoiceWaveform"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoom, type DecryptedMessage, type ReplyInfo, type SystemEvent } from "@/hooks/use-room";
+import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { supabase } from "@/integrations/supabase/client";
 import { workerDecryptFile } from "@/lib/crypto-worker-api";
 import { deriveKey } from "@/lib/crypto";
@@ -673,7 +674,7 @@ const ChatRoom = () => {
   const [headerHeight, setHeaderHeight] = useState(56);
   const headerTouchRef = useRef<{ y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -688,9 +689,15 @@ const ChatRoom = () => {
   }, [roomId, navigate]);
 
   const {
-    messages, onlineUsers, isConnected, chatEnded, typingUsers, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
-    sendMessage, sendTyping, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage,
+    messages, onlineUsers, isConnected, chatEnded, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
+    sendMessage, endChat, leaveRoom, deleteMessage, editMessage, addReaction, togglePin, markAsRead, recordMediaView, reportScreenshot, broadcastMediaSaved, kickUser, toggleRoomLock, retryMessage, channel,
   } = useRoom(roomConfig);
+
+  const { typingUsers, typingText, onInputChange: onTypingInput, onMessageSent: onTypingSent } = useTypingIndicator({
+    channel,
+    username: roomConfig?.username ?? "",
+    onlineUsernames: onlineUsers.map((u) => u.username),
+  });
 
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const isCreator = roomConfig?.isCreator ?? false;
@@ -858,6 +865,7 @@ const ChatRoom = () => {
     const textToSend = messageInput.trim();
     setSendProgress({ stage: "compressing", percent: 5 });
     setMessageInput("");
+    onTypingSent();
     const currentFile = selectedFile;
     const currentReply = replyTo;
     setSelectedFile(null); setFilePreviewUrl(null); setReplyTo(null);
@@ -900,11 +908,8 @@ const ChatRoom = () => {
 
   const handleInputChange = useCallback((value: string) => {
     setMessageInput(value);
-    if (value.trim()) {
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => sendTyping(), 300);
-    }
-  }, [sendTyping]);
+    onTypingInput(value.trim().length > 0);
+  }, [onTypingInput]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1118,16 +1123,31 @@ const ChatRoom = () => {
         </div>
 
         {/* Typing indicator */}
-        {typingUsers.length > 0 && (
-          <div className="flex items-center gap-2 text-[12px] text-muted-foreground/60 px-4 py-2">
-            <div className="flex gap-0.5">
-              {[0, 1, 2].map((i) => (
-                <span key={i} className="w-1 h-1 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-              ))}
-            </div>
-            {typingUsers.join(", ")} typing...
-          </div>
-        )}
+        <AnimatePresence>
+          {typingText && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="flex items-center gap-2 text-[12px] text-muted-foreground/60 px-4 py-2"
+            >
+              <div className="flex gap-[3px]">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-[5px] h-[5px] rounded-full bg-muted-foreground/40"
+                    style={{
+                      animation: "typing-dot 1s ease-in-out infinite",
+                      animationDelay: `${i * 0.15}s`,
+                    }}
+                  />
+                ))}
+              </div>
+              <span>{typingText}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Scroll to bottom */}
