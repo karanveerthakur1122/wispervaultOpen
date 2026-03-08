@@ -763,12 +763,7 @@ const ChatRoom = () => {
     setRoomConfig(JSON.parse(stored));
   }, [roomId, navigate]);
 
-  // Auto-prompt for notification permission on room entry
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
+  // Notification permission is now handled by the NotificationPermissionBanner component
 
   const {
     messages, onlineUsers, isConnected, chatEnded, pinnedMessage, systemEvents, roomCreatedAt, isRoomLocked,
