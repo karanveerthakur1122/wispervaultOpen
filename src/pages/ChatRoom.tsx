@@ -1044,6 +1044,7 @@ const ChatRoom = () => {
         style={{
           top: `${headerHeight + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`,
           bottom: '70px',
+          overflowAnchor: 'none',
         }}
         onClick={clearOverlays}
         onScroll={handleMessagesScroll}
