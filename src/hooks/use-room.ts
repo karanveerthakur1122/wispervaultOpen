@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { encryptFile } from "@/lib/crypto";
 import { getAlertDecision } from "@/lib/notification-prefs";
