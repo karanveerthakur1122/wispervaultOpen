@@ -596,7 +596,15 @@ const MessageBubble = memo(({
         {isShowingReactions && menuPos && createPortal(
           <div className="fixed inset-0 z-[99998]" onClick={() => onSetActiveReaction(null)}>
             <div
-              style={{ position: 'fixed', top: Math.max(8, menuPos.y - 48), ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
+              ref={(el) => {
+                if (el) {
+                  const h = el.getBoundingClientRect().height;
+                  const maxY = window.innerHeight - h - 8;
+                  const clampedY = Math.max(8, Math.min(menuPos.y - 48, maxY));
+                  el.style.top = `${clampedY}px`;
+                }
+              }}
+              style={{ position: 'fixed', ...(msg.isOwn ? { right: Math.max(8, window.innerWidth - menuPos.x) } : { left: Math.max(8, menuPos.x) }), zIndex: 99999 }}
               className="bg-card/95 backdrop-blur-xl rounded-full px-2 py-1 flex gap-0.5 menu-enter shadow-xl border border-border/30" onClick={(e) => e.stopPropagation()}>
               {QUICK_EMOJIS.map((emoji) => (
                 <button key={emoji} onClick={() => { onReaction(msg.id, emoji); onSetActiveReaction(null); }} className="text-lg active:scale-125 transition-transform p-1 rounded-full active:bg-secondary/50">{emoji}</button>
