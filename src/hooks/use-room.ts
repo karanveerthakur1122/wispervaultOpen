@@ -452,7 +452,7 @@ export function useRoom(config: RoomConfig | null) {
               return { ...m, reactions: [...m.reactions, { id: r.id, emoji: r.emoji, senderName: r.sender_name }] };
             }));
             if (r.sender_name !== config.username) {
-              alertForMessage(`${r.sender_name} reacted ${r.emoji}`, { tag: `reaction-${r.id}` });
+              alertForMessage(`${r.sender_name} reacted ${r.emoji}`);
             }
           }
         )
