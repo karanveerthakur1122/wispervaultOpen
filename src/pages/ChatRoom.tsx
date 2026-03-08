@@ -168,20 +168,30 @@ ChatHeader.displayName = "ChatHeader";
 
 // ─── Notification Permission Banner ──────────────────────────────────────────
 const NotificationPermissionBanner = memo(({ topOffset }: { topOffset: number }) => {
-  const [visible, setVisible] = useState(false);
+  const [permState, setPermState] = useState<"default" | "denied" | "granted" | "unsupported">("granted");
 
   useEffect(() => {
-    if (!("Notification" in window)) return;
-    if (Notification.permission === "default") {
-      setVisible(true);
+    if (!("Notification" in window)) {
+      setPermState("unsupported");
+      return;
     }
+    setPermState(Notification.permission as "default" | "denied" | "granted");
   }, []);
 
   const handleAllow = useCallback(() => {
-    Notification.requestPermission().then(() => setVisible(false));
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "denied") {
+      // Can't re-prompt when denied — guide user to browser settings
+      return;
+    }
+    Notification.requestPermission().then((result) => {
+      setPermState(result as "default" | "denied" | "granted");
+    });
   }, []);
 
-  if (!visible) return null;
+  if (permState === "granted" || permState === "unsupported") return null;
+
+  const isBlocked = permState === "denied";
 
   return (
     <motion.div
@@ -192,16 +202,22 @@ const NotificationPermissionBanner = memo(({ topOffset }: { topOffset: number })
       className="fixed left-0 right-0 z-[997] overflow-hidden"
       style={{ top: `${topOffset}px` }}
     >
-      <div className="flex items-center gap-2.5 px-4 py-2 bg-primary/8 border-b border-primary/15">
-        <Bell className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-        <p className="text-[11px] text-foreground/80 flex-1">Enable notifications to know when new messages arrive</p>
-        <button
-          onClick={handleAllow}
-          className="text-[11px] font-semibold text-primary px-2.5 py-1 rounded-lg bg-primary/10 active:bg-primary/20 transition-colors flex-shrink-0"
-        >
-          Allow
-        </button>
-        <button onClick={() => setVisible(false)} className="text-muted-foreground/60 active:text-foreground transition-colors p-0.5">
+      <div className={`flex items-center gap-2.5 px-4 py-2 border-b ${isBlocked ? "bg-destructive/10 border-destructive/20" : "bg-primary/8 border-primary/15"}`}>
+        <Bell className={`w-3.5 h-3.5 flex-shrink-0 ${isBlocked ? "text-destructive" : "text-primary"}`} />
+        <p className="text-[11px] text-foreground/80 flex-1">
+          {isBlocked
+            ? "Notifications are blocked. Tap your browser's lock icon (🔒) → Site settings → Allow notifications."
+            : "Enable notifications to know when new messages arrive"}
+        </p>
+        {!isBlocked && (
+          <button
+            onClick={handleAllow}
+            className="text-[11px] font-semibold text-primary px-2.5 py-1 rounded-lg bg-primary/10 active:bg-primary/20 transition-colors flex-shrink-0"
+          >
+            Allow
+          </button>
+        )}
+        <button onClick={() => setPermState("granted")} className="text-muted-foreground/60 active:text-foreground transition-colors p-0.5">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
