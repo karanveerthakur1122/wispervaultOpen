@@ -148,15 +148,30 @@ export function useRoom(config: RoomConfig | null) {
   }, [config?.roomId]);
 
   const showNotification = useCallback((title: string, options?: NotificationOptions) => {
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    if (!("Notification" in window)) return;
+    // If permission not yet granted, request it on the fly
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then((perm) => {
+        if (perm === "granted") {
+          fireNotification(title, options);
+        }
+      });
+      return;
+    }
+    if (Notification.permission !== "granted") return;
+    fireNotification(title, options);
+  }, []);
+
+  const fireNotification = useCallback((title: string, options?: NotificationOptions) => {
+    const opts = { ...options, icon: "/favicon.ico" };
     if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then((reg) => {
-        reg.showNotification(title, { ...options, icon: "/favicon.ico" });
+        reg.showNotification(title, opts);
       }).catch(() => {
-        try { new Notification(title, options); } catch {}
+        try { new Notification(title, opts); } catch {}
       });
     } else {
-      try { new Notification(title, options); } catch {}
+      try { new Notification(title, opts); } catch {}
     }
   }, []);
 
