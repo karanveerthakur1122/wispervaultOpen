@@ -62,21 +62,19 @@ const ChatHeader = memo(({
   const [elapsed, setElapsed] = useState("");
   const [isDndActive, setIsDndActive] = useState(false);
   const [notifPerm, setNotifPerm] = useState<string>("default");
+  const [curSoundMode, setCurSoundMode] = useState<string>("volume");
 
-  // Check DND status every 30s & notification permission every 2s
+  // Check DND, notification perm, and sound mode periodically
   useEffect(() => {
-    const checkDnd = () => {
+    const check = () => {
       const prefs = getRoomPrefs(roomId);
       setIsDndActive(prefs.dndEnabled && isInDndWindow(prefs.dndStart, prefs.dndEnd));
-    };
-    const checkPerm = () => {
+      setCurSoundMode(prefs.soundMode);
       if ("Notification" in window) setNotifPerm(Notification.permission);
     };
-    checkDnd();
-    checkPerm();
-    const iv = setInterval(checkDnd, 30_000);
-    const iv2 = setInterval(checkPerm, 2000);
-    return () => { clearInterval(iv); clearInterval(iv2); };
+    check();
+    const iv = setInterval(check, 2000);
+    return () => clearInterval(iv);
   }, [roomId]);
 
   useEffect(() => {
