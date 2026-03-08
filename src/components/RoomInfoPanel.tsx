@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
   Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2,
-  Bell, BellOff, Volume2, Vibrate, VolumeX, Moon
+  Bell, BellOff, MessageSquare, Volume2, Vibrate, VolumeX, Moon
 } from "lucide-react";
 import { getRoomPrefs, setRoomPref, type SoundMode } from "@/lib/notification-prefs";
 import { toast } from "@/hooks/use-toast";
