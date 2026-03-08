@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Image as ImageIcon, Mic, Video, Crown,
-  Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2
+  Circle, UserX, X, Lock, Unlock, Play, Loader2, Share2,
+  Bell, BellOff, Volume2, Vibrate, VolumeX
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
