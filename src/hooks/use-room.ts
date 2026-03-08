@@ -37,6 +37,7 @@ export interface DecryptedMessage {
   readBy: string[];
   replyTo: ReplyInfo | null;
   pending?: boolean; // optimistic flag
+  sendStatus?: QueueItemStatus; // queue status
 }
 
 interface RoomConfig {
