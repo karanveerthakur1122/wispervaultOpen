@@ -160,6 +160,20 @@ export function useRoom(config: RoomConfig | null) {
     }
   }, []);
 
+  /** Preference-aware alert: checks notifications, sound mode, and DND schedule. */
+  const alertForMessage = useCallback((title: string, options?: NotificationOptions) => {
+    if (!config) return;
+    const decision = getAlertDecision(config.roomId);
+    if (decision.showNotification) {
+      showNotification(title, { ...options, silent: !decision.playSound });
+    }
+    if (decision.vibrate) {
+      haptic.medium();
+    } else if (decision.playSound) {
+      haptic.light();
+    }
+  }, [config, showNotification]);
+
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   const loadReactions = useCallback(async (messageIds: string[]): Promise<Record<string, Reaction[]>> => {
