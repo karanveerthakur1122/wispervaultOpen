@@ -1085,8 +1085,7 @@ const ChatRoom = () => {
         setIsEndingChat={setIsEndingChat}
       />
 
-      {/* Notification permission banner */}
-      <NotificationPermissionBanner topOffset={headerHeight} />
+
 
       <AnimatePresence>
         {connStatus === "blocked" && (
