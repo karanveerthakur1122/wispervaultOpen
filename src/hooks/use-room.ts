@@ -89,7 +89,7 @@ export function useRoom(config: RoomConfig | null) {
   const [onlineUsers, setOnlineUsers] = useState<Array<{ username: string; color: string }>>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [chatEnded, setChatEnded] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  
   const [pinnedMessage, setPinnedMessage] = useState<DecryptedMessage | null>(null);
   const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([]);
   const [roomCreatedAt, setRoomCreatedAt] = useState<string | null>(null);
