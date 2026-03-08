@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Send, LogOut, Users, Shield, Paperclip, Pin, Smile, Bell,
+  Send, LogOut, Users, Shield, Paperclip, Pin, Smile, Bell, BellOff,
   Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock, Moon
 } from "lucide-react";
 import { getRoomPrefs, isInDndWindow } from "@/lib/notification-prefs";
@@ -61,16 +61,22 @@ const ChatHeader = memo(({
 }: ChatHeaderProps) => {
   const [elapsed, setElapsed] = useState("");
   const [isDndActive, setIsDndActive] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<string>("default");
 
-  // Check DND status every 30s
+  // Check DND status every 30s & notification permission every 2s
   useEffect(() => {
     const checkDnd = () => {
       const prefs = getRoomPrefs(roomId);
       setIsDndActive(prefs.dndEnabled && isInDndWindow(prefs.dndStart, prefs.dndEnd));
     };
+    const checkPerm = () => {
+      if ("Notification" in window) setNotifPerm(Notification.permission);
+    };
     checkDnd();
+    checkPerm();
     const iv = setInterval(checkDnd, 30_000);
-    return () => clearInterval(iv);
+    const iv2 = setInterval(checkPerm, 2000);
+    return () => { clearInterval(iv); clearInterval(iv2); };
   }, [roomId]);
 
   useEffect(() => {
@@ -112,6 +118,11 @@ const ChatHeader = memo(({
             </button>
             {isRoomLocked && <Lock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
             {isDndActive && <Moon className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
+            {notifPerm === "granted" ? (
+              <Bell className="w-3 h-3 text-primary flex-shrink-0" />
+            ) : (
+              <BellOff className="w-3 h-3 text-destructive flex-shrink-0" />
+            )}
             <SignalBars latency={connLatency} status={connStatus} size="sm" />
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
