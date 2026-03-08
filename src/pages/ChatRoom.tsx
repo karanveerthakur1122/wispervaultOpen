@@ -865,6 +865,7 @@ const ChatRoom = () => {
     const textToSend = messageInput.trim();
     setSendProgress({ stage: "compressing", percent: 5 });
     setMessageInput("");
+    onTypingSent();
     const currentFile = selectedFile;
     const currentReply = replyTo;
     setSelectedFile(null); setFilePreviewUrl(null); setReplyTo(null);
