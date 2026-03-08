@@ -358,7 +358,7 @@ export function useRoom(config: RoomConfig | null) {
               const { text, replyTo } = parseReply(rawText);
               setMessages((prev) => prev.map((m) => m.id !== msg.id ? m : { ...m, text, isPinned: msg.is_pinned, replyTo }));
               if (msg.sender_name !== config.username) {
-                showNotification(`${msg.sender_name} edited a message`, { body: text.slice(0, 100), tag: `edit-${msg.id}`, silent: false });
+                alertForMessage(`${msg.sender_name} edited a message`, { body: text.slice(0, 100), tag: `edit-${msg.id}` });
               }
               if (msg.is_pinned) {
                 const existing = messagesRef.current.find((m) => m.id === msg.id);
