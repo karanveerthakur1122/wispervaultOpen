@@ -5,8 +5,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Send, LogOut, Users, Shield, Paperclip, Pin, Smile,
-  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock
+  Check, CheckCheck, X, Image as ImageIcon, Reply, ZoomIn, Pencil, Mic, Square, Loader2, Trash2, Download, Pause, Play, RotateCcw, WifiOff, Lock, Unlock, Moon
 } from "lucide-react";
+import { getRoomPrefs, isInDndWindow } from "@/lib/notification-prefs";
 import { useConnectivity, type ConnectivityStatus } from "@/hooks/use-connectivity";
 import SignalBars from "@/components/SignalBars";
 import EmojiPicker from "@/components/EmojiPicker";
@@ -58,6 +59,18 @@ const ChatHeader = memo(({
   headerRef, onTouchStart, onTouchMove, onTouchEnd, isEndingChat, setIsEndingChat,
 }: ChatHeaderProps) => {
   const [elapsed, setElapsed] = useState("");
+  const [isDndActive, setIsDndActive] = useState(false);
+
+  // Check DND status every 30s
+  useEffect(() => {
+    const checkDnd = () => {
+      const prefs = getRoomPrefs(roomId);
+      setIsDndActive(prefs.dndEnabled && isInDndWindow(prefs.dndStart, prefs.dndEnd));
+    };
+    checkDnd();
+    const iv = setInterval(checkDnd, 30_000);
+    return () => clearInterval(iv);
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomCreatedAt) return;
@@ -97,6 +110,7 @@ const ChatHeader = memo(({
               {roomId}
             </button>
             {isRoomLocked && <Lock className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+            {isDndActive && <Moon className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
             <SignalBars latency={connLatency} status={connStatus} size="sm" />
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
