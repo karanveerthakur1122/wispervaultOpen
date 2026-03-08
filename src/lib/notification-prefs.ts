@@ -39,7 +39,7 @@ export function setRoomPref<K extends keyof RoomPrefs>(roomId: string, key: K, v
 }
 
 /** Returns true if the current time falls within the DND window. */
-function isInDndWindow(start: string, end: string): boolean {
+export function isInDndWindow(start: string, end: string): boolean {
   const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
   const [sh, sm] = start.split(":").map(Number);
