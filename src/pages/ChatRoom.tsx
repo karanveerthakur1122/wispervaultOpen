@@ -61,16 +61,22 @@ const ChatHeader = memo(({
 }: ChatHeaderProps) => {
   const [elapsed, setElapsed] = useState("");
   const [isDndActive, setIsDndActive] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<string>("default");
 
-  // Check DND status every 30s
+  // Check DND status every 30s & notification permission every 2s
   useEffect(() => {
     const checkDnd = () => {
       const prefs = getRoomPrefs(roomId);
       setIsDndActive(prefs.dndEnabled && isInDndWindow(prefs.dndStart, prefs.dndEnd));
     };
+    const checkPerm = () => {
+      if ("Notification" in window) setNotifPerm(Notification.permission);
+    };
     checkDnd();
+    checkPerm();
     const iv = setInterval(checkDnd, 30_000);
-    return () => clearInterval(iv);
+    const iv2 = setInterval(checkPerm, 2000);
+    return () => { clearInterval(iv); clearInterval(iv2); };
   }, [roomId]);
 
   useEffect(() => {
