@@ -17,6 +17,7 @@ import { RecordingWaveform, PlaybackWaveform } from "@/components/VoiceWaveform"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoom, type DecryptedMessage, type ReplyInfo, type SystemEvent } from "@/hooks/use-room";
+import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { supabase } from "@/integrations/supabase/client";
 import { workerDecryptFile } from "@/lib/crypto-worker-api";
 import { deriveKey } from "@/lib/crypto";
