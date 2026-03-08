@@ -228,14 +228,13 @@ export function useRoom(config: RoomConfig | null) {
       }
     }
 
-    if (pageHidden) {
-      if (decision.playSound) {
-        playNotificationSound();
-        haptic.light();
-      }
-      if (decision.vibrate) {
-        haptic.medium();
-      }
+    // Sound & vibration should play regardless of page visibility
+    if (decision.playSound) {
+      playNotificationSound();
+      haptic.light();
+    }
+    if (decision.vibrate) {
+      haptic.medium();
     }
   }, [config, showNotification, playNotificationSound, flushGroupedNotification]);
 
