@@ -613,10 +613,8 @@ export function useRoom(config: RoomConfig | null) {
     }
   }, [config, enqueueToQueue]);
 
-  const sendTyping = useCallback(() => {
-    if (!channelRef.current || !config) return;
-    channelRef.current.send({ type: "broadcast", event: "typing", payload: { username: config.username } });
-  }, [config]);
+  // Channel ref exposed for typing indicator hook
+  const getChannel = useCallback(() => channelRef.current, []);
 
   const endChat = useCallback(async () => {
     if (!config || !channelRef.current) return;
