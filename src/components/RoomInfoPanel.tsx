@@ -158,6 +158,9 @@ const RoomInfoPanel = ({
   // Sound preferences (persisted per room via utility)
   const initPrefs = getRoomPrefs(roomId);
   const [soundMode, setSoundMode] = useState<SoundMode>(initPrefs.soundMode);
+  const [dndEnabled, setDndEnabled] = useState(initPrefs.dndEnabled);
+  const [dndStart, setDndStart] = useState(initPrefs.dndStart);
+  const [dndEnd, setDndEnd] = useState(initPrefs.dndEnd);
 
   const mediaMessages = useMemo(() => {
     return messages.filter((m) => m.mediaUrl && m.mediaType);
