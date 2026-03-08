@@ -337,9 +337,9 @@ export function useRoom(config: RoomConfig | null) {
               enqueueMessage(newMsg);
               if (msg.is_pinned) setPinnedMessage(newMsg);
               if (!newMsg.isOwn) {
-                showNotification(newMsg.username, {
+                alertForMessage(newMsg.username, {
                   body: newMsg.mediaType ? "Sent a media file" : newMsg.text.slice(0, 100),
-                  tag: `msg-${newMsg.id}`, silent: false,
+                  tag: `msg-${newMsg.id}`,
                 });
               }
             } catch {}
