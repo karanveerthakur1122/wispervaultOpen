@@ -4,6 +4,7 @@ export type SoundMode = "volume" | "vibrate" | "mute";
 
 export interface RoomPrefs {
   notifications: boolean;
+  toastNotifications: boolean;
   soundMode: SoundMode;
   dndEnabled: boolean;
   dndStart: string; // "HH:MM" 24h
