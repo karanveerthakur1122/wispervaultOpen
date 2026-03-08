@@ -347,6 +347,56 @@ const RoomInfoPanel = ({
                     </button>
                   ))}
                 </div>
+               </div>
+
+              {/* Do Not Disturb Schedule */}
+              <div className="glass rounded-xl px-4 py-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Moon className={`w-4 h-4 ${dndEnabled ? "text-primary" : "text-muted-foreground"}`} />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Do Not Disturb</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {dndEnabled ? `${dndStart} – ${dndEnd}` : "Auto-mute on a schedule"}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={dndEnabled}
+                    onCheckedChange={(v) => {
+                      setDndEnabled(v);
+                      setRoomPref(roomId, "dndEnabled", v);
+                    }}
+                  />
+                </div>
+                {dndEnabled && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wider">From</label>
+                      <input
+                        type="time"
+                        value={dndStart}
+                        onChange={(e) => {
+                          setDndStart(e.target.value);
+                          setRoomPref(roomId, "dndStart", e.target.value);
+                        }}
+                        className="w-full bg-muted/30 border border-border/30 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 [color-scheme:dark]"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wider">To</label>
+                      <input
+                        type="time"
+                        value={dndEnd}
+                        onChange={(e) => {
+                          setDndEnd(e.target.value);
+                          setRoomPref(roomId, "dndEnd", e.target.value);
+                        }}
+                        className="w-full bg-muted/30 border border-border/30 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 [color-scheme:dark]"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
