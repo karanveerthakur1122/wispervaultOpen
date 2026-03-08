@@ -37,7 +37,10 @@ Deno.serve(async (req) => {
     // 3. Delete media views (FK -> rooms)
     await supabase.from("media_views").delete().eq("room_id", room_id);
 
-    // 4. Delete encrypted media from storage
+    // 4. Delete room sessions
+    await supabase.from("room_sessions").delete().eq("room_id", room_id);
+
+    // 5. Delete encrypted media from storage
     const { data: mediaFiles } = await supabase.storage
       .from("encrypted-media")
       .list(room_id);
@@ -46,13 +49,13 @@ Deno.serve(async (req) => {
       await supabase.storage.from("encrypted-media").remove(paths);
     }
 
-    // 5. Delete all messages (FK -> rooms)
+    // 6. Delete all messages (FK -> rooms)
     await supabase.from("messages").delete().eq("room_id", room_id);
 
-    // 6. Delete all presence (FK -> rooms)
+    // 7. Delete all presence (FK -> rooms)
     await supabase.from("presence").delete().eq("room_id", room_id);
 
-    // 7. Delete the room
+    // 8. Delete the room
     await supabase.from("rooms").delete().eq("room_id", room_id);
 
     console.log(`Room ${room_id} fully deleted`);
