@@ -701,11 +701,21 @@ const ChatRoom = () => {
   // Smart auto-scroll: only scroll if user is near the bottom
   const isNearBottomRef = useRef(true);
   const prevCountRef = useRef(0);
+  const userScrolledUpRef = useRef(false); // true when user manually scrolled away from bottom
+  const justSentRef = useRef(false); // force scroll on own send
 
   const updateNearBottom = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distFromBottom < 200;
+    isNearBottomRef.current = nearBottom;
+    if (nearBottom) {
+      userScrolledUpRef.current = false;
+      setNewMsgCount(0);
+    } else {
+      userScrolledUpRef.current = true;
+    }
   }, []);
 
   const [newMsgCount, setNewMsgCount] = useState(0);
@@ -715,21 +725,37 @@ const ChatRoom = () => {
   useEffect(() => {
     if (timeline.length > 0 && !hasInitialScrolled.current) {
       hasInitialScrolled.current = true;
+      // Use double-rAF to ensure virtualizer has measured
       requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(timeline.length - 1, { align: 'end' });
+        requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(timeline.length - 1, { align: 'end' });
+          isNearBottomRef.current = true;
+          userScrolledUpRef.current = false;
+        });
       });
     }
   }, [timeline.length]);
 
+  // Handle new messages arriving
   useEffect(() => {
-    if (timeline.length > prevCountRef.current) {
-      if (isNearBottomRef.current) {
+    const newCount = timeline.length - prevCountRef.current;
+    if (newCount > 0) {
+      // If user just sent a message, always scroll to bottom
+      if (justSentRef.current) {
+        justSentRef.current = false;
+        requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
+        });
+        setNewMsgCount(0);
+      } else if (!userScrolledUpRef.current && isNearBottomRef.current) {
+        // User is at bottom — auto-scroll
         requestAnimationFrame(() => {
           virtualizer.scrollToIndex(timeline.length - 1, { align: 'end', behavior: 'smooth' });
         });
         setNewMsgCount(0);
       } else {
-        setNewMsgCount((prev) => prev + (timeline.length - prevCountRef.current));
+        // User scrolled up — don't auto-scroll, show notification
+        setNewMsgCount((prev) => prev + newCount);
       }
     }
     prevCountRef.current = timeline.length;
