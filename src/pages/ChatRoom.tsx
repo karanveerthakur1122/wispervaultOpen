@@ -240,7 +240,7 @@ const ChatInput = memo(({
   };
 
   return (
-    <div className="fixed left-0 right-0 bottom-0 z-[1000]">
+    <div ref={inputBarRef} className="fixed left-0 right-0 bottom-0 z-[1000]">
       {/* File preview */}
       {selectedFile && (
         <div className="glass-subtle border-t border-border/30 px-4 py-2.5">
