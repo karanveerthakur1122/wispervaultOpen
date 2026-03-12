@@ -100,7 +100,7 @@ const ChatHeader = memo(({
     <header
       ref={headerRef}
       className="fixed top-0 left-0 right-0 z-[1000] glass-subtle px-4 py-2.5 flex items-center justify-between select-none border-b border-border/40"
-      style={{ willChange: 'transform' }}
+      style={{ transform: 'translate3d(0,0,0)', backfaceVisibility: 'hidden' }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
