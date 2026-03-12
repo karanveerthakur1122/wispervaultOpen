@@ -232,7 +232,7 @@ const ChatInput = memo(({
   messageInput, onInputChange, onSend, onFileSelect, onPaste, onEmojiSelect,
   isSending, selectedFile, filePreviewUrl, replyTo, onClearFile, onClearReply,
   showEmojiPicker, onToggleEmoji, onCloseEmoji, inputRef, fileInputRef,
-  voiceRecorder, onVoiceFinish, onVoicePreviewSend,
+  voiceRecorder, onVoiceFinish, onVoicePreviewSend, wrapperRef,
 }: ChatInputProps) => {
   const formatDuration = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0");
