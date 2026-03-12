@@ -225,13 +225,14 @@ interface ChatInputProps {
   voiceRecorder: ReturnType<typeof useVoiceRecorder>;
   onVoiceFinish: () => void;
   onVoicePreviewSend: () => void;
+  wrapperRef?: React.RefObject<HTMLDivElement>;
 }
 
 const ChatInput = memo(({
   messageInput, onInputChange, onSend, onFileSelect, onPaste, onEmojiSelect,
   isSending, selectedFile, filePreviewUrl, replyTo, onClearFile, onClearReply,
   showEmojiPicker, onToggleEmoji, onCloseEmoji, inputRef, fileInputRef,
-  voiceRecorder, onVoiceFinish, onVoicePreviewSend,
+  voiceRecorder, onVoiceFinish, onVoicePreviewSend, wrapperRef,
 }: ChatInputProps) => {
   const formatDuration = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0");
@@ -240,7 +241,7 @@ const ChatInput = memo(({
   };
 
   return (
-    <div className="fixed left-0 right-0 bottom-0 z-[1000]">
+    <div ref={wrapperRef} className="fixed left-0 right-0 bottom-0 z-[1000]">
       {/* File preview */}
       {selectedFile && (
         <div className="glass-subtle border-t border-border/30 px-4 py-2.5">
@@ -752,6 +753,7 @@ const ChatRoom = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputBarWrapperRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const voiceRecorder = useVoiceRecorder();
@@ -1066,14 +1068,16 @@ const ChatRoom = () => {
       setNewMsgCount(0);
       userScrolledUpRef.current = false;
     }
-    // Toggle header shadow based on scroll position
+    // Toggle header & input bar shadows based on scroll position
     const header = headerRef.current;
+    const inputBar = inputBarWrapperRef.current;
+    const scrolled = el.scrollTop > 8;
+    const hasContentBelow = distFromBottom > 8;
     if (header) {
-      if (el.scrollTop > 8) {
-        header.classList.add("header-scrolled");
-      } else {
-        header.classList.remove("header-scrolled");
-      }
+      header.classList.toggle("header-scrolled", scrolled);
+    }
+    if (inputBar) {
+      inputBar.classList.toggle("inputbar-scrolled", hasContentBelow);
     }
   }, [updateNearBottom]);
 
@@ -1291,6 +1295,7 @@ const ChatRoom = () => {
         voiceRecorder={voiceRecorder}
         onVoiceFinish={handleVoiceFinish}
         onVoicePreviewSend={handleVoicePreviewSend}
+        wrapperRef={inputBarWrapperRef}
       />
 
       {/* Image Lightbox */}
