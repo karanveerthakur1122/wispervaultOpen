@@ -158,9 +158,9 @@ const Home = () => {
         {/* Logo */}
         <div className="text-center space-y-2">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.08, duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
             className="w-20 h-20 mx-auto rounded-3xl glass glass-glow flex items-center justify-center mb-4"
           >
             <Shield className="w-10 h-10 text-primary" />
