@@ -150,9 +150,9 @@ const Home = () => {
       <div className="absolute bottom-1/4 -right-20 w-60 h-60 rounded-full bg-primary/5 blur-[100px]" />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, type: "spring" }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-sm space-y-8"
       >
         {/* Logo */}
