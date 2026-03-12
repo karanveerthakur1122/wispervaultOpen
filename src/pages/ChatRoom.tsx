@@ -100,7 +100,7 @@ const ChatHeader = memo(({
     <header
       ref={headerRef}
       className="fixed top-0 left-0 right-0 z-[1000] glass-subtle px-4 py-2.5 flex items-center justify-between select-none border-b border-border/40"
-      style={{ willChange: 'transform' }}
+      style={{ transform: 'translate3d(0,0,0)', backfaceVisibility: 'hidden' }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -294,7 +294,7 @@ const ChatInput = memo(({
       )}
 
       {/* Input bar */}
-      <div className="glass-subtle border-t border-border/30 px-3 py-2.5" style={{ willChange: 'transform' }}>
+      <div className="glass-subtle border-t border-border/30 px-3 py-2.5" style={{ transform: 'translate3d(0,0,0)' }}>
         {voiceRecorder.previewUrl ? (
           <div className="flex gap-2 items-center">
             <button className="h-10 w-10 rounded-full flex items-center justify-center text-destructive active:scale-90 transition-transform active:bg-destructive/10" onClick={voiceRecorder.discardPreview}>
@@ -1160,6 +1160,7 @@ const ChatRoom = () => {
           top: `${headerHeight + (connStatus === "blocked" ? 28 : 0) + (pinnedMessage ? 32 : 0)}px`,
           bottom: '60px',
           overflowAnchor: 'none',
+          isolation: 'isolate',
         }}
         onClick={clearOverlays}
         onScroll={handleMessagesScroll}
