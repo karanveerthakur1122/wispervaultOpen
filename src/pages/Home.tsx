@@ -150,17 +150,17 @@ const Home = () => {
       <div className="absolute bottom-1/4 -right-20 w-60 h-60 rounded-full bg-primary/5 blur-[100px]" />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, type: "spring" }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-sm space-y-8"
       >
         {/* Logo */}
         <div className="text-center space-y-2">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.08, duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
             className="w-20 h-20 mx-auto rounded-3xl glass glass-glow flex items-center justify-center mb-4"
           >
             <Shield className="w-10 h-10 text-primary" />

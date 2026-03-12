@@ -1224,7 +1224,7 @@ const ChatRoom = () => {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              transition={{ duration: 0.1, ease: "easeOut" }}
               className="flex items-center gap-2 text-[12px] text-muted-foreground/60 px-4 py-2"
             >
               <div className="flex gap-[3px]">
@@ -1248,7 +1248,7 @@ const ChatRoom = () => {
       {/* Scroll to bottom */}
       <AnimatePresence>
         {(showScrollBottom || newMsgCount > 0) && (
-          <motion.button initial={{ opacity: 0, scale: 0.8, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8, y: 8 }} transition={{ duration: 0.15 }}
+          <motion.button initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 4 }} transition={{ duration: 0.1 }}
             onClick={scrollToBottom} className="fixed right-3 z-[999] flex items-center gap-1.5 rounded-full bg-card/90 backdrop-blur-md border border-border/30 px-3 h-9 text-primary shadow-lg active:scale-95 transition-transform" style={{ bottom: '68px' }}>
             {newMsgCount > 0 && (
               <span className="text-[11px] font-medium bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">
