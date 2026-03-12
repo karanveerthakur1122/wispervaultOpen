@@ -225,6 +225,7 @@ interface ChatInputProps {
   voiceRecorder: ReturnType<typeof useVoiceRecorder>;
   onVoiceFinish: () => void;
   onVoicePreviewSend: () => void;
+  wrapperRef?: React.RefObject<HTMLDivElement>;
 }
 
 const ChatInput = memo(({
