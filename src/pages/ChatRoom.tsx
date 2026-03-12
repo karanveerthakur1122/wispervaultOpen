@@ -753,6 +753,7 @@ const ChatRoom = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputBarWrapperRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const voiceRecorder = useVoiceRecorder();
