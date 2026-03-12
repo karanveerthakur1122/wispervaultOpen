@@ -196,6 +196,18 @@
   }
 }
 
+/* Header scroll shadow */
+.header-scrolled {
+  box-shadow: 0 4px 24px -4px hsla(225 15% 4% / 0.6), 0 1px 3px hsla(225 15% 4% / 0.3);
+  border-bottom-color: hsla(var(--glass-border));
+  transition: box-shadow 0.2s ease-out, border-bottom-color 0.2s ease-out;
+}
+
+header:not(.header-scrolled) {
+  box-shadow: none;
+  transition: box-shadow 0.2s ease-out, border-bottom-color 0.2s ease-out;
+}
+
 /* Reply highlight animation */
 .reply-highlight {
   position: relative;

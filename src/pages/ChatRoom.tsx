@@ -1066,6 +1066,15 @@ const ChatRoom = () => {
       setNewMsgCount(0);
       userScrolledUpRef.current = false;
     }
+    // Toggle header shadow based on scroll position
+    const header = headerRef.current;
+    if (header) {
+      if (el.scrollTop > 8) {
+        header.classList.add("header-scrolled");
+      } else {
+        header.classList.remove("header-scrolled");
+      }
+    }
   }, [updateNearBottom]);
 
   const scrollToBottom = useCallback(() => {
