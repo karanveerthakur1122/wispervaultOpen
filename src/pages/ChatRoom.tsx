@@ -1068,14 +1068,16 @@ const ChatRoom = () => {
       setNewMsgCount(0);
       userScrolledUpRef.current = false;
     }
-    // Toggle header shadow based on scroll position
+    // Toggle header & input bar shadows based on scroll position
     const header = headerRef.current;
+    const inputBar = inputBarWrapperRef.current;
+    const scrolled = el.scrollTop > 8;
+    const hasContentBelow = distFromBottom > 8;
     if (header) {
-      if (el.scrollTop > 8) {
-        header.classList.add("header-scrolled");
-      } else {
-        header.classList.remove("header-scrolled");
-      }
+      header.classList.toggle("header-scrolled", scrolled);
+    }
+    if (inputBar) {
+      inputBar.classList.toggle("inputbar-scrolled", hasContentBelow);
     }
   }, [updateNearBottom]);
 
