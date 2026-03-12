@@ -1295,6 +1295,7 @@ const ChatRoom = () => {
         voiceRecorder={voiceRecorder}
         onVoiceFinish={handleVoiceFinish}
         onVoicePreviewSend={handleVoicePreviewSend}
+        wrapperRef={inputBarWrapperRef}
       />
 
       {/* Image Lightbox */}
