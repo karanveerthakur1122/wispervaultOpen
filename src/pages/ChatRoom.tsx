@@ -1224,7 +1224,7 @@ const ChatRoom = () => {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              transition={{ duration: 0.1, ease: "easeOut" }}
               className="flex items-center gap-2 text-[12px] text-muted-foreground/60 px-4 py-2"
             >
               <div className="flex gap-[3px]">
