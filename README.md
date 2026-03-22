@@ -41,8 +41,8 @@ Ensure you have the following installed on your local machine:
 
 1. **Fork & Clone the repository**
    ```bash
-   git clone https://github.com/karanveerthakur1122/wispervault.git
-   cd wispervault
+   git clone https://github.com/karanveerthakur1122/wispervaultOpen.git
+   cd wispervaultOpen
    ```
 
 2. **Install dependencies**
@@ -77,7 +77,7 @@ Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to 
 
 ## 🐛 Found a Bug or Have a Feature Request?
 
-Please [open an issue](https://github.com/karanveerthakur1122/wispervault/issues) and provide as much detail as possible, including steps to reproduce the bug or the reasoning behind your feature request.
+Please [open an issue](https://github.com/karanveerthakur1122/wispervaultOpen/issues) and provide as much detail as possible, including steps to reproduce the bug or the reasoning behind your feature request.
 
 ## 📄 License
 

@@ -7,7 +7,7 @@ We love our contributors! Whether it's fixing bugs, improving the documentation,
 1. **Fork the Repository**: Click the "Fork" button on the top right.
 2. **Clone your Fork**: 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/wispervault.git
+   git clone https://github.com/YOUR_USERNAME/wispervaultOpen.git
    ```
 3. **Create a Branch**: 
    ```bash
