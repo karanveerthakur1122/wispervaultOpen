@@ -1,73 +1,122 @@
-# Welcome to your Lovable project
+# Phantom — Encrypted Messaging
 
-## Project info
+<div align="center">
+  <img src="public/icons/icon-192.png" alt="Phantom Logo" width="100"/>
+  <p><strong>End-to-end encrypted ephemeral messaging. Anonymous, secure, and temporary.</strong></p>
+</div>
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Welcome to **Phantom**! This is an open-source, encrypted messaging web application built for privacy-conscious users. Messages are securely encrypted and optionally ephemeral. We believe in open-source and transparency, and we welcome contributions from developers worldwide!
 
-## How can I edit this code?
+## 🚀 Features
 
-There are several ways of editing your application.
+- **End-to-End Encryption**: Secure messaging where only the intended recipient can read the messages.
+- **Ephemeral Messages**: Messages can be set to self-destruct after a certain period or after being read.
+- **Anonymous Usage**: No personal identifiable information required.
+- **Modern UI/UX**: Built with React, Tailwind CSS, and shadcn/ui for a beautiful, responsive experience.
 
-**Use Lovable**
+## 🛠️ Technology Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+This project leverages modern web technologies for performance and security:
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend Framework**: [React 18](https://reactjs.org/) + [Vite](https://vitejs.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
+- **Backend/Database**: [Supabase](https://supabase.com/)
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 💻 Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Want to run Phantom locally or contribute to the project? Follow these steps to set up your development environment.
 
-Follow these steps:
+### Prerequisites
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Ensure you have the following installed on your local machine:
+- **Node.js**: `v18.0.0` or higher - [Download here](https://nodejs.org/)
+- **npm** (comes with Node.js) or **pnpm** / **yarn**
+- **Git**
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Installation
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. **Fork & Clone the repository**
+   ```bash
+   git clone https://github.com/karanveerthakur1122/wispervault.git
+   cd wispervault
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+   *(If you prefer another package manager, use `yarn install` or `pnpm install`)*
 
-**Edit a file directly in GitHub**
+3. **Set up Environment Variables**
+   Create a `.env` file in the root directory and add the necessary Supabase credentials:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+   *Note: For local development, refer to the `.env.example` file if available.*
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+   Your app will now be running on `http://localhost:5173` (or the port specified by Vite).
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🤝 Contributing
 
-## What technologies are used for this project?
+We love our contributors! Whether it's fixing bugs, improving the documentation, or proposing new features, your help is appreciated.
 
-This project is built with:
+### How to Contribute
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. **Fork the Repository**: Click the "Fork" button on the top right.
+2. **Clone your Fork**: 
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/wispervault.git
+   ```
+3. **Create a Branch**: 
+   ```bash
+   git checkout -b feature/your-feature-name 
+   # or
+   git checkout -b bugfix/issue-number
+   ```
+4. **Make your Changes**: Implement your feature or bug fix.
+5. **Commit your Changes**: Use clear and descriptive commit messages.
+   ```bash
+   git commit -m "feat: add amazing new feature"
+   ```
+6. **Push to your Fork**: 
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+7. **Open a Pull Request**: Go to the original repository and click "Compare & pull request". Provide a detailed description of your changes.
 
-## How can I deploy this project?
+### Code Style Guidelines
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- **TypeScript**: We use strict typing. Avoid `any` where possible.
+- **Linting & Formatting**: Ensure you run `npm run lint` before committing to adhere to our ESLint and Prettier configurations.
+- **Commits**: Follow [Conventional Commits](https://www.conventionalcommits.org/). Example: `feat:`, `fix:`, `docs:`, `refactor:`.
 
-## Can I connect a custom domain to my Lovable project?
+### Setting up Lovable (Optional)
 
-Yes, you can!
+This project was originally bootstrapped with [Lovable](https://lovable.dev/). You can still use it by importing your forked repo, but all development can be done seamlessly locally using your favorite IDE.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 🐛 Found a Bug or Have a Feature Request?
+
+Please [open an issue](https://github.com/karanveerthakur1122/wispervault/issues) and provide as much detail as possible, including steps to reproduce the bug or the reasoning behind your feature request.
+
+## 📄 License
+
+This project is open-source and available under the [MIT License](LICENSE).
+
+---
+
+<div align="center">
+  Made with ❤️ by the open-source community.
+</div>
