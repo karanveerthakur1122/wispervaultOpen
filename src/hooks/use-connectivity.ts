@@ -21,8 +21,8 @@ export function useConnectivity() {
       const timer = setTimeout(() => controller.abort(), timeout);
       const start = performance.now();
 
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/?_cb=${Date.now()}`, {
-        method: "HEAD",
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/health?_cb=${Date.now()}`, {
+        method: "GET",
         signal: controller.signal,
         cache: "no-store",
         headers: {
@@ -33,7 +33,7 @@ export function useConnectivity() {
       clearTimeout(timer);
       const elapsed = Math.round(performance.now() - start);
       setLatency(elapsed);
-      return response.ok || response.status === 400;
+      return response.ok;
     } catch {
       setLatency(null);
       return false;
