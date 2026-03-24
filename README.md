@@ -88,3 +88,8 @@ This project is open-source and available under the [MIT License](LICENSE).
 <div align="center">
   Made with ❤️ by the open-source community.
 </div>
+
+<div align="center">
+  Feedbacks are appreciated
+  Please, don't miss to give Star⭐ the repo.
+</div>
