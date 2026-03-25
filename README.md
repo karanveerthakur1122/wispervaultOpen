@@ -1,5 +1,4 @@
 # Phantom — Encrypted Messaging
-
 <div align="center">
   <img src="public/icons/icon-192.png" alt="Phantom Logo" width="100"/>
   <p><strong>End-to-end encrypted ephemeral messaging. Anonymous, secure, and temporary.</strong></p>
