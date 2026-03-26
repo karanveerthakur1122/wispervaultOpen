@@ -93,3 +93,6 @@ This project is open-source and available under the [MIT License](LICENSE).
   Feedbacks are appreciated
   Please, don't miss to give Star⭐ the repo.
 </div>
+
+<div> This is open source, feel free to add.
+</div>
